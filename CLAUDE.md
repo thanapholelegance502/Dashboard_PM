@@ -1,0 +1,66 @@
+# CLAUDE.md — context สำหรับ AI (อ่านไฟล์นี้ก่อนเริ่มงาน)
+
+> Elegance PMO Dashboard · session ใหม่: ดึง git แล้วอ่านไฟล์นี้ + `docs/STATUS.md` ก่อนลงมือ
+
+## โปรเจกต์นี้คืออะไร
+Dashboard บริหารโปรเจกต์หลายแผนก (PM · QA · BA · UX/UI) สำหรับ CEO/CFO + PM
+ดึงข้อมูลจริงจาก **Lark Task API** → ETL → PostgreSQL → REST API → React dashboard
+แทน prototype เดิมบน Genspark · ผู้สั่งงาน: ข้าว (PM, Elegance Consultant)
+
+## สถานะปัจจุบัน (21 ก.ย. 2026)
+- ✅ **P1 Data Layer** — Lark ETL 6 บอร์ด · OAuth + refresh rotation · snapshot · cron
+- ✅ **PM Dashboard + Admin** (backend + frontend) — KPI/Gantt/donut/attention/trend/drill-down · CRUD section rules + recompute · budget/งวดการเงิน · as-of
+- ✅ **หน้า Finance** (C-level) · **auth UI** (Login/AuthGate — พร้อมสำหรับ SSO)
+- ✅ **Executive UI redesign** (AppShell navy + KPI icon/tint + Gantt polish) — ทุกหน้าเข้าชุด
+- ✅ **Deploy จริงบน server** `203.150.48.37` (Ubuntu 22.04, Docker) — container ครบ, authorize + sync 561 ใบสำเร็จ, nginx ตอบ 200
+- 🔴 **ติด: provider ยังไม่เปิด port 80/443/22 external** (portal ไม่มี firewall UI → ต้องแจ้ง provider)
+- 56 backend tests ผ่าน
+
+## 🎯 งานถัดไป — Lark SSO + HTTPS ฟรี (ทำต่อจากนี้)
+ดูแผนละเอียด → **[docs/NEXT-SSO.md](docs/NEXT-SSO.md)**
+สรุป: domain ฟรี (DuckDNS/nip.io) + Caddy auto-HTTPS + เปิด `AUTH_MODE=lark_sso` + whitelist AppUser
+เหตุผล: ตอนนี้ `AUTH_MODE=dev` = **ทุกคนที่เข้าถึง = ADMIN** → ต้องปิดก่อนเปิด public
+
+## Stack + โครงสร้าง
+- **backend** `server/` — Node 20 + Express + Prisma + PostgreSQL (JavaScript, ESM)
+- **frontend** `web/` — React 18 + Vite + TypeScript + Tailwind + Recharts
+- **deploy** — Docker (`docker-compose.prod.yml` + `bootstrap.sh`)
+```
+server/src/{config,lark,etl,domain,api,jobs,db}/   # ดู docs/ARCHITECTURE.md
+web/src/{lib,components,pages}/
+docs/                                              # เอกสาร operational
+00-MASTER.md … 06-BUILD-PLAN.md                    # สเปกกลาง (อ่านก่อนแก้ logic)
+```
+
+## รันเครื่อง dev (local)
+```bash
+# DB: postgres local หรือ docker compose up -d
+cd server && npm install && npx prisma migrate deploy && npm run seed
+npm run lark:authorize   # ครั้งแรก (ดู docs/DEV.md)
+node src/index.js        # API :3000
+cd ../web && npm install && npm run dev   # :5173 (proxy /api → :3000)
+cd server && npm test    # 56 tests
+```
+
+## กติกาที่ห้ามละเมิด (จาก 00-MASTER §12)
+1. ตัวเลขทุกตัวต้องไล่กลับไปหาการ์ดใน Lark ได้ (drill-down + ลิงก์)
+2. KPI กับ list ที่อธิบายมัน มาจาก query เดียวกัน
+3. pagination วนจน `has_more=false` เสมอ
+4. ETL ล้ม → เก็บข้อมูลรอบก่อน ห้ามล้างตาราง
+5. **ไม่มีชื่อลูกค้าจริงในโค้ด/seed/test** — ใช้ `project_code`
+6. ทุก mutation ลง AuditLog
+7. secret (LARK_APP_SECRET, token) อยู่ backend เท่านั้น · `.env*` ไม่ขึ้น git
+
+## Lark gotchas (เจ็บมาแล้ว — ดู docs/ARCHITECTURE.md)
+- **3 host แยก**: task/contact = `open-sg` · authorize = `accounts` · token = `open.larksuite.com`
+- sections endpoint = `/task/v2/sections?resource_type=...` (query param, ไม่ใช่ path)
+- task list ย่อ → ต้อง list ต่อ section · `due.timestamp` (ms)
+- refresh token หมุนทุกครั้ง → เขียนทับทันที
+
+## เอกสาร
+- `docs/STATUS.md` — ทำแล้ว/จะทำ/roadmap/blocked-on
+- `docs/ARCHITECTURE.md` — โครงโค้ด, data model, API, Lark
+- `docs/DEV.md` — setup, authorize, test
+- `docs/MAINTAINING.md` — re-authorize, backup, เพิ่มบอร์ด, troubleshoot
+- `docs/DEPLOY.md` — cloud deploy (docker + IP + dev-mode)
+- `docs/NEXT-SSO.md` — **งานถัดไป: Lark SSO + HTTPS**

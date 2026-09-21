@@ -30,14 +30,14 @@
 
 ---
 
-## 🔜 กำลังทำ — P0 (ก่อนใช้จริง)
+## 🔜 กำลังทำ — P0
 
-| # | เรื่อง | หมายเหตุ |
+| # | เรื่อง | สถานะ |
 |---|---|---|
-| P0-1 | **Lark SSO auth** | ตอนนี้ dev = ทุกคน ADMIN · ต้องปิดก่อนขึ้น server (รอ redirect URI จาก IT — B8) |
-| P0-4 | **Deploy cloud (linux)** | Dockerfile + compose.prod + nginx + SSL · รอเครื่อง |
+| P0-4 | **Deploy cloud** | ✅ **deploy แล้ว** บน `203.150.48.37` (Ubuntu+Docker) — container ครบ, authorize+sync 561 ใบ, nginx 200 · 🔴 ติด provider เปิด port 80/443/22 external (portal ไม่มี firewall UI) |
+| P0-1 | **Lark SSO + HTTPS** | 🎯 **งานถัดไป** — code พร้อม, รอ domain+443+config → ดู **[NEXT-SSO.md](NEXT-SSO.md)** |
 
-→ ดู [DEPLOY.md](DEPLOY.md)
+→ deploy: [DEPLOY.md](DEPLOY.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
 
 ---
 
