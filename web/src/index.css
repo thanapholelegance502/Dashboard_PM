@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-100 text-slate-800;
+}
+
+/* print: ซ่อน UI ที่ไม่ใช่ Gantt เวลา export */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# secrets — ห้าม commit เด็ดขาด
+.env
+.env.*
+!.env.example
+!.env.production.example
+env.text
+
+# build output
+dist/
+build/
+coverage/
+
+# db
+server/prisma/*.db
+
+# misc
+.DS_Store
+*.local
+*.log
+
+# local per-user
+.claude/settings.local.json

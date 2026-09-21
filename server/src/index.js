@@ -1,0 +1,47 @@
+import express from 'express';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+import { env } from './config/env.js';
+import { attachUser, requireAuth } from './api/middleware/auth.js';
+import { errorHandler } from './api/middleware/error.js';
+import { syncRouter } from './api/routes/sync.js';
+import { authRouter } from './api/routes/auth.js';
+import { metaRouter } from './api/routes/meta.js';
+import { pmRouter } from './api/routes/pm.js';
+import { adminRouter } from './api/routes/admin.js';
+import { startCron } from './jobs/cron.js';
+
+export function createApp() {
+  const app = express();
+  if (env.trustProxy) app.set('trust proxy', 1); // อยู่หลัง nginx → เชื่อ X-Forwarded-*
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use(
+    session({
+      secret: env.sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { httpOnly: true, sameSite: 'lax', secure: env.cookieSecure }, // secure=true บน production (https)
+    })
+  );
+  app.use(attachUser);
+
+  app.use('/api/auth', authRouter);
+  app.use('/api/sync', syncRouter);
+  app.use('/api/meta', metaRouter);
+  app.use('/api/pm', requireAuth, pmRouter);
+  app.use('/api/admin', requireAuth, adminRouter);
+
+  app.use(errorHandler);
+  return app;
+}
+
+// start เฉพาะตอนรันตรง (ไม่ใช่ตอน import ใน test)
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) {
+  const app = createApp();
+  app.listen(env.port, () => {
+    console.log(`[server] http://localhost:${env.port} (AUTH_MODE=${env.authMode})`);
+    startCron();
+  });
+}

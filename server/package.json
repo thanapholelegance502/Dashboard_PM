@@ -1,0 +1,40 @@
+{
+  "name": "pmo-dashboard-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Elegance PMO Dashboard — P1 Data Layer (Lark integration + ETL)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "node prisma/seed.js",
+    "lark:authorize": "node scripts/authorize.js",
+    "sync:once": "node scripts/sync-once.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "axios": "^1.7.7",
+    "cookie-parser": "^1.4.7",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "vitest": "^2.1.4"
+  }
+}

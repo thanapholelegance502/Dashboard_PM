@@ -1,0 +1,38 @@
+# Production stack — postgres + backend + frontend(nginx)
+# ใช้กับ managed DB จริงได้โดยลบ service postgres แล้วชี้ DATABASE_URL ไป cloud
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ต้องตั้ง POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pmo}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file: ./server/.env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "3000"
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80" # ต่อ reverse proxy/certbot ชั้นนอกสำหรับ HTTPS
+
+volumes:
+  pgdata:
