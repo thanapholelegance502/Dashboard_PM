@@ -25,6 +25,10 @@ services:
         condition: service_healthy
     expose:
       - "3000"
+    # publish 3000 เฉพาะ localhost ของ host — สำหรับ authorize (SSH tunnel) + debug
+    # ไม่เปิดออก network (ปลอดภัย) · web container คุยผ่าน network ภายในอยู่แล้ว
+    ports:
+      - "127.0.0.1:3000:3000"
 
   web:
     build: ./web

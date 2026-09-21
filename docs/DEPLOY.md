@@ -89,7 +89,77 @@ TZ=Asia/Bangkok
 
 ---
 
-## Docker quickstart (artifacts พร้อมแล้ว)
+## 🚀 Deploy จริงรอบแรก — Ubuntu + Docker + IP + dev-mode (ไม่มี domain)
+
+> scenario ปัจจุบัน: server Ubuntu มี Docker · เข้าผ่าน IP · dev-mode หลัง firewall/VPN
+> ⚠️ dev-mode = ทุกคนที่เข้าถึง IP:80 เป็น ADMIN → **firewall ต้องเปิด :80 เฉพาะ IP/VPN ที่เชื่อถือ**
+
+### 1) บน server — clone + ติดตั้ง Docker (ถ้ายังไม่มี)
+```bash
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin git
+sudo usermod -aG docker $USER && newgrp docker      # ใช้ docker ไม่ต้อง sudo
+git clone https://github.com/thanapholelegance502/Dashboard_PM.git
+cd Dashboard_PM
+```
+
+### 2) สร้าง .env.production (dev-mode)
+```bash
+cp server/.env.production.example server/.env.production
+nano server/.env.production
+```
+ตั้งค่า (รอบนี้ dev-mode + http):
+```dotenv
+NODE_ENV=production
+LARK_APP_ID=cli_aa20a1d6d338def1
+LARK_APP_SECRET=<secret จริง>
+LARK_REDIRECT_URI=http://localhost:3000/api/auth/callback   # authorize ผ่าน SSH tunnel
+DATABASE_URL=postgresql://postgres:<pass>@postgres:5432/pmo
+AUTH_MODE=dev              # รอบนี้ dev · เปลี่ยนเป็น lark_sso เมื่อมี domain
+COOKIE_SECURE=false        # ยังเป็น http
+TRUST_PROXY=true
+SESSION_SECRET=<random>
+TZ=Asia/Bangkok
+```
+
+### 3) ขึ้น stack
+```bash
+export POSTGRES_PASSWORD=<pass เดียวกับใน DATABASE_URL>
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec server npm run seed
+```
+
+### 4) Authorize Lark (ครั้งเดียว — ผ่าน SSH tunnel)
+temp authorize server ฟังที่ container :3000 (publish เฉพาะ localhost ของ server)
+```bash
+# บนเครื่องคุณ (local) — เปิด tunnel:
+ssh -L 3000:localhost:3000 <user>@<server-ip>
+
+# ใน SSH session (บน server):
+docker compose -f docker-compose.prod.yml exec server npm run lark:authorize
+# → print URL · เปิด URL นั้นใน browser เครื่อง local → login Lark + กดอนุญาต
+# callback http://localhost:3000/... วิ่งผ่าน tunnel เข้า server → token เขียนลง DB
+```
+> Lark Console มี redirect URI `http://localhost:3000/api/auth/callback` อยู่แล้ว (จาก dev local) — ใช้ซ้ำได้
+
+### 5) ดึงข้อมูล + เข้าใช้
+```bash
+docker compose -f docker-compose.prod.yml exec server npm run sync:once -- --snapshot
+```
+เปิด **`http://<server-ip>`** (web nginx :80)
+
+### 6) Firewall (สำคัญ — dev-mode)
+```bash
+sudo ufw allow from <trusted-ip-หรือ-subnet> to any port 80
+sudo ufw enable
+# ห้ามเปิด :80 ให้ 0.0.0.0 (public) เพราะ dev-mode = ADMIN ทุกคน
+```
+
+### ต่อไป (เมื่อมี domain)
+→ ทำ HTTPS (certbot) + `AUTH_MODE=lark_sso` + `COOKIE_SECURE=true` + ลง redirect URI domain ใน Lark Console (ดูหัวข้อล่าง)
+
+---
+
+## Docker quickstart (อ้างอิง)
 
 มีไฟล์: `server/Dockerfile` · `web/Dockerfile` (+ `web/nginx.conf`) · `docker-compose.prod.yml` · `server/.env.production.example`
 
