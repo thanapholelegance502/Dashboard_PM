@@ -43,17 +43,26 @@ export default function GanttTimeline({ projects, onProjectClick }: Props) {
   const TRACK_MIN = Math.max(640, weeks.length * 48);
 
   return (
-    <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div style={{ minWidth: 520 + TRACK_MIN }}>
+    <div>
+      {/* legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 px-3 py-2 text-[11px] text-slate-500">
+        <LegendItem color={COLORS.ontrack} soft label="UAT (Target)" />
+        <LegendItem color={COLORS.ontrack} label="UAT (Actual)" />
+        <LegendItem color={COLORS.doing} soft label="Go-Live (Target)" />
+        <LegendItem color={COLORS.doing} label="Go-Live (Forecast)" />
+        <span className="flex items-center gap-1"><span className="inline-block h-3 w-0.5 bg-delayed" /> วันนี้</span>
+      </div>
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: 528 + TRACK_MIN }}>
         {/* header */}
         <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
-          <div className="sticky left-0 z-10 flex w-[520px] shrink-0 bg-slate-50">
+          <div className="sticky left-0 z-10 flex w-[528px] shrink-0 bg-slate-50">
             <Cell w="34px">#</Cell>
             <Cell w="150px">Project</Cell>
-            <Cell w="110px">Progress</Cell>
-            <Cell w="80px">Target</Cell>
-            <Cell w="70px">Slip</Cell>
-            <Cell w="76px">Status</Cell>
+            <Cell w="86px">Progress</Cell>
+            <Cell w="84px">Target End</Cell>
+            <Cell w="84px">Forecast End</Cell>
+            <Cell w="90px" clip={false}>Status</Cell>
           </div>
           <div className="relative flex-1" style={{ minWidth: TRACK_MIN }}>
             {weeks.map((t, i) =>
@@ -73,23 +82,26 @@ export default function GanttTimeline({ projects, onProjectClick }: Props) {
           const slip = slipText(p.slipDays);
           return (
             <div key={p.code} className="flex items-stretch border-b border-slate-100 hover:bg-slate-50">
-              <div className="sticky left-0 z-10 flex w-[520px] shrink-0 items-center bg-white text-sm">
+              <div className="sticky left-0 z-10 flex w-[528px] shrink-0 items-center bg-white text-sm">
                 <Cell w="34px">{idx + 1}</Cell>
                 <Cell w="150px">
                   <button className="truncate text-left font-medium text-doing hover:underline" onClick={() => onProjectClick?.(p.code)}>
                     {p.displayName}
                   </button>
                 </Cell>
-                <Cell w="110px">
+                <Cell w="86px">
                   <ProgressBar value={p.progressPct} override={p.progressSource === 'OVERRIDE'} />
                 </Cell>
-                <Cell w="80px">
-                  <span className="text-xs text-slate-500">{fmtDate(p.forecastGolive ?? p.targetGolive)}</span>
+                <Cell w="84px">
+                  <span className="text-xs text-slate-600">{fmtDate(p.targetGolive)}</span>
                 </Cell>
-                <Cell w="70px">
-                  <span className={`text-xs ${slip.late ? 'font-semibold text-delayed' : 'text-slate-400'}`}>{slip.text}</span>
+                <Cell w="84px">
+                  <span className={`text-xs ${slip.late ? 'font-semibold text-delayed' : 'text-slate-500'}`}>
+                    {fmtDate(p.forecastGolive ?? p.targetGolive)}
+                    {slip.late && <span className="ml-1 text-[10px]">({slip.text})</span>}
+                  </span>
                 </Cell>
-                <Cell w="76px">
+                <Cell w="90px" clip={false}>
                   <StatusBadge status={p.status} source={p.statusSource} reasons={p.statusReasons} autoStatus={p.statusAuto} />
                 </Cell>
               </div>
@@ -120,15 +132,25 @@ export default function GanttTimeline({ projects, onProjectClick }: Props) {
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
 }
 
-function Cell({ w, children }: { w: string; children: React.ReactNode }) {
+function LegendItem({ color, soft, label }: { color: string; soft?: boolean; label: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="inline-block h-2.5 w-2.5 rotate-45 rounded-[1px]" style={{ backgroundColor: color, opacity: soft ? 0.45 : 1 }} />
+      {label}
+    </span>
+  );
+}
+
+function Cell({ w, children, clip = true }: { w: string; children: React.ReactNode; clip?: boolean }) {
   return (
     <div className="flex items-center px-2 py-2" style={{ width: w }}>
-      <div className="w-full truncate">{children}</div>
+      <div className={clip ? 'w-full truncate' : 'w-full'}>{children}</div>
     </div>
   );
 }

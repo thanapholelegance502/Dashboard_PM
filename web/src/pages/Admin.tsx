@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import AppShell from '../components/AppShell';
 import {
   getAdminProjects, patchProject, testConnection, statusOverride, progressOverride,
   getUnmappedSections, getSectionRules, createProject,
@@ -26,24 +26,15 @@ const label = 'text-[11px] font-medium uppercase tracking-wider text-slate-400';
 export default function Admin() {
   const [tab, setTab] = useState<'projects' | 'rules'>('projects');
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <header className="flex items-end justify-between border-b border-slate-200 pb-5">
-          <div>
-            <div className={label}>Settings</div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">ตั้งค่าระบบ</h1>
-          </div>
-          <Link to="/" className={btnGhost}>← Dashboard</Link>
-        </header>
-
-        <nav className="mt-4 flex gap-6 border-b border-slate-200 text-sm">
+    <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules">
+      <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <nav className="flex gap-6 border-b border-slate-200 text-sm">
           <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')}>โครงการ · Milestone</TabBtn>
           <TabBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Section Rules</TabBtn>
         </nav>
-
         <div className="py-6">{tab === 'projects' ? <ProjectsTab /> : <RulesTab />}</div>
       </div>
-    </div>
+    </AppShell>
   );
 }
 

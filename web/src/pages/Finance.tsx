@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getFinance } from '../lib/api';
 import type { FinanceResult, ProjectStatus } from '../lib/types';
 import { money } from '../lib/format';
 import { statusColor, STATUS_LABEL } from '../lib/theme';
+import AppShell from '../components/AppShell';
 
 export default function Finance() {
   const [data, setData] = useState<FinanceResult | null>(null);
@@ -28,17 +28,8 @@ export default function Finance() {
   const cfMax = Math.max(1, ...cfRows.map((r) => r.b.amount));
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        {/* header */}
-        <header className="flex items-end justify-between border-b border-slate-200 pb-5">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-widest text-slate-400">Portfolio Financial</div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">ภาพรวมการเงินโครงการ</h1>
-          </div>
-          <Link to="/" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</Link>
-        </header>
-
+    <AppShell title="Portfolio Financial — Executive" eyebrow="มูลค่างาน · การเก็บเงิน · กระแสเงินสด" tagline="Deliver Projects. Create Business Value.">
+      <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         {/* hero numbers — แถบเดียว คั่นด้วยเส้น */}
         <section className="grid grid-cols-2 gap-y-6 border-b border-slate-200 py-7 md:grid-cols-4 md:divide-x md:divide-slate-200">
           <Metric label="มูลค่างานรวม" value={money(t.budget)} />
@@ -136,7 +127,7 @@ export default function Finance() {
           </table>
         </section>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
