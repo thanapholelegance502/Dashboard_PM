@@ -1,5 +1,10 @@
-# Production stack — postgres + backend + frontend(nginx)
+# Production stack — postgres + backend + frontend + watchtower (auto-deploy)
 # ใช้กับ managed DB จริงได้โดยลบ service postgres แล้วชี้ DATABASE_URL ไป cloud
+#
+# 🔄 Auto-deploy: merge main → GitHub Actions build+push image → GHCR
+#    → watchtower บน server ดึง image ใหม่มาเปลี่ยน container เอง (ไม่ต้อง SSH)
+#    image มาจาก GHCR — ตั้ง IMAGE_PREFIX ใน .env ได้ (default = repo นี้)
+#    ครั้งแรกต้อง `docker login ghcr.io` บน server ก่อน (image เป็น private) → ดู docs/CICD.md
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,7 +22,7 @@ services:
       retries: 10
 
   server:
-    build: ./server
+    image: ${IMAGE_PREFIX:-ghcr.io/thanapholelegance502/dashboard_pm}-server:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ./server/.env.production
     depends_on:
@@ -29,14 +34,35 @@ services:
     # ไม่เปิดออก network (ปลอดภัย) · web container คุยผ่าน network ภายในอยู่แล้ว
     ports:
       - "127.0.0.1:3000:3000"
+    # migrate deploy รันอัตโนมัติตอน start อยู่แล้ว (ดู server/Dockerfile)
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
 
   web:
-    build: ./web
+    image: ${IMAGE_PREFIX:-ghcr.io/thanapholelegance502/dashboard_pm}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - server
     ports:
       - "80:80" # ต่อ reverse proxy/certbot ชั้นนอกสำหรับ HTTPS
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # 🔄 auto-deploy agent — poll GHCR แล้วเปลี่ยน container ที่ติด label ข้างบนเท่านั้น
+  # (postgres ไม่ติด label → ไม่ยุ่ง · watchtower ไม่ update ตัวเอง)
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # creds สำหรับดึง image private จาก GHCR (สร้างด้วย `docker login ghcr.io` บน server)
+      - ${DOCKER_CONFIG_DIR:-/root/.docker}/config.json:/config.json:ro
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"          # update เฉพาะ container ที่ enable
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-120} # เช็คทุก 120 วินาที
+      WATCHTOWER_CLEANUP: "true"               # ลบ image เก่าหลัง update (กันดิสก์เต็ม)
+      WATCHTOWER_ROLLING_RESTART: "true"       # เปลี่ยนทีละ container
+      TZ: ${TZ:-Asia/Bangkok}
 
 volumes:
   pgdata:

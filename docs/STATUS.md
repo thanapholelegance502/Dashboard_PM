@@ -35,9 +35,10 @@
 | # | เรื่อง | สถานะ |
 |---|---|---|
 | P0-4 | **Deploy cloud** | ✅ **deploy แล้ว** บน `203.150.48.37` (Ubuntu+Docker) — container ครบ, authorize+sync 561 ใบ, nginx 200 · 🔴 ติด provider เปิด port 80/443/22 external (portal ไม่มี firewall UI) |
+| P0-5 | **Auto-deploy (CI/CD)** | ✅ **code พร้อม** — merge main → GitHub Actions (test→build→push GHCR) → Watchtower บน server ดึงมา deploy เอง (pull-based, ไม่ต้อง SSH) · เหลือ **ตั้งค่าครั้งเดียวบน server** → ดู **[CICD.md](CICD.md)** |
 | P0-1 | **Lark SSO + HTTPS** | 🎯 **งานถัดไป** — code พร้อม, รอ domain+443+config → ดู **[NEXT-SSO.md](NEXT-SSO.md)** |
 
-→ deploy: [DEPLOY.md](DEPLOY.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
+→ deploy: [DEPLOY.md](DEPLOY.md) · auto-deploy: [CICD.md](CICD.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
 
 ---
 

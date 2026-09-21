@@ -63,4 +63,5 @@ cd server && npm test    # 56 tests
 - `docs/DEV.md` — setup, authorize, test
 - `docs/MAINTAINING.md` — re-authorize, backup, เพิ่มบอร์ด, troubleshoot
 - `docs/DEPLOY.md` — cloud deploy (docker + IP + dev-mode)
+- `docs/CICD.md` — **auto-deploy**: merge main → GitHub Actions → GHCR → Watchtower (pull-based)
 - `docs/NEXT-SSO.md` — **งานถัดไป: Lark SSO + HTTPS**

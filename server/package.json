@@ -17,6 +17,7 @@
     "lark:authorize": "node scripts/authorize.js",
     "sync:once": "node scripts/sync-once.js",
     "test": "vitest run",
+    "test:ci": "vitest run --exclude '**/pm-api.test.js'",
     "test:watch": "vitest"
   },
   "prisma": {
