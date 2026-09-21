@@ -94,6 +94,7 @@ async function main() {
   let pr = 0;
   for (const [code, list] of Object.entries(projectRules)) {
     const proj = await prisma.project.findUnique({ where: { projectCode: code } });
+    if (!proj) continue; // project ยังไม่มี (เพิ่มผ่าน Admin ทีหลัง) → ข้าม rule ไปก่อน
     for (const r of list) {
       await prisma.sectionRule.create({
         data: { ...r, priority: 15, projectId: proj.id, isActive: true },
