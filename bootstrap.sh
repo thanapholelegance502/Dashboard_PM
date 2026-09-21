@@ -19,7 +19,12 @@ echo "   docker: $(docker --version) · compose: $DC"
 echo "════ 2/4  ตั้งค่า .env.production ════"
 if [ ! -f server/.env.production ]; then
   read -rp "   LARK_APP_SECRET: " SECRET
-  read -rp "   Postgres password (ตั้งใหม่): " DBPASS
+  # password ต้องเป็น a-z A-Z 0-9 เท่านั้น (มี @ : / จะพัง DATABASE_URL)
+  while true; do
+    read -rp "   Postgres password (ตัวอักษร+ตัวเลขเท่านั้น ห้าม @:/ ): " DBPASS
+    if [[ "$DBPASS" =~ ^[A-Za-z0-9]+$ ]]; then break; fi
+    echo "   ✗ ใช้ได้แค่ a-z A-Z 0-9 (ที่ใส่มามีอักขระพิเศษ พังกับ URL) ลองใหม่"
+  done
   SESSION=$(head -c24 /dev/urandom | base64 2>/dev/null || echo "change-$(date +%s)")
   cat > server/.env.production <<EOF
 NODE_ENV=production
@@ -36,11 +41,13 @@ SYNC_CRON_MORNING=0 8 * * *
 SYNC_CRON_EVENING=0 17 * * *
 EOF
   export POSTGRES_PASSWORD="$DBPASS"
-  echo "   ✓ สร้าง .env.production"
+  echo "POSTGRES_PASSWORD=${DBPASS}" > .env   # compose อ่าน root .env อัตโนมัติ (ทุก session)
+  echo "   ✓ สร้าง .env.production + .env"
 else
   echo "   มี .env.production อยู่แล้ว"
   DBPASS=$(grep -oP 'postgres:\K[^@]+' server/.env.production | head -1)
   export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$DBPASS}"
+  echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" > .env
 fi
 
 echo "════ 3/4  build + up (postgres + backend + web) ════"
