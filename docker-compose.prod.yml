@@ -48,6 +48,21 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
 
+  # 🌐 Cloudflare Tunnel — ทางเข้าจากอินเทอร์เน็ต (HTTPS ฟรี) โดย "ไม่ต้องเปิด port เข้า"
+  # server ยิง outbound ไปหา Cloudflare เอง → แก้ปัญหา provider ไม่เปิด port หมดจด
+  # เปิดใช้ด้วย profile:  docker compose -f docker-compose.prod.yml --profile tunnel up -d
+  # ต้องตั้ง CLOUDFLARE_TUNNEL_TOKEN ใน .env + ชี้ public hostname → http://web:80 (ดู docs/CLOUDFLARE-TUNNEL.md)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel run
+    environment:
+      # ต้องตั้งใน .env ก่อนใช้ profile tunnel (ว่าง = cloudflared จะ error ตอน start) — ดู docs/CLOUDFLARE-TUNNEL.md
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+
   # 🔄 auto-deploy agent — poll GHCR แล้วเปลี่ยน container ที่ติด label ข้างบนเท่านั้น
   # (postgres ไม่ติด label → ไม่ยุ่ง · watchtower ไม่ update ตัวเอง)
   watchtower:
