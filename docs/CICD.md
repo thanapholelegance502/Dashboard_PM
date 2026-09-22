@@ -94,13 +94,47 @@ WATCHTOWER_POLL_INTERVAL=300   # เช็คทุก 5 นาที (default 1
 
 ---
 
+## 🕒 Version control / Rollback (ดึงเวอร์ชันเก่ากลับ)
+
+**ทุก commit ที่ merge main → มี image เก็บถาวรใน GHCR** 2 tag:
+- `latest` — เวอร์ชันล่าสุด (watchtower ตามอันนี้)
+- `sha-<commit สั้น 7 ตัว>` — **ตรึงตาม commit** (immutable ไม่เปลี่ยน) = จุด rollback
+
+→ ย้อนไปเวอร์ชันไหนก็ได้ที่เคยขึ้น production **ไม่ต้อง rebuild** (ดึง image เก่าจาก GHCR ตรง ๆ ~30 วิ)
+
+### วิธีที่ 1 — Rollback ทันที (ฉุกเฉิน, ไม่ rebuild)
+บน server:
+```bash
+export POSTGRES_PASSWORD=<pass>
+bash rollback.sh                 # โชว์ list commit + tag ที่ย้อนได้
+bash rollback.sh sha-a1b2c3d     # ย้อนไป commit นั้นเลย
+```
+- pin `IMAGE_TAG=sha-...` ลง `.env` → watchtower **หยุด auto-update** เอง (เพราะ sha tag ไม่เปลี่ยน digest) — ของค้างเวอร์ชันนั้นจนกว่าจะสั่งกลับ
+- กลับมา auto:  `bash rollback.sh latest`
+
+> map commit → tag:  `git log --oneline` เอา hash 7 ตัวแรกมาเติมหน้าเป็น `sha-<hash>`
+
+### วิธีที่ 2 — Rollback ถาวร (แนะนำเมื่อรู้ว่า commit ไหนเสีย)
+```bash
+git revert <commit เสีย>    # สร้าง commit ที่ย้อน diff กลับ (ประวัติไม่หาย)
+# → เปิด PR → ข้าว merge main → pipeline ปกติ build+deploy เวอร์ชันที่แก้แล้ว
+```
+ดีกว่าวิธี 1 เพราะ history เดินหน้า + main กับ production ตรงกันเสมอ (วิธี 1 คือ pin ชั่วคราว)
+
+### ⚠️ ข้อควรระวัง
+- **DB migration ย้อนยาก** — ถ้า commit เสียมี migration ที่แก้ schema แล้ว rollback แค่ image อาจไม่พอ (schema ใหม่ค้างอยู่) → เลี่ยง migration ที่ทำลายข้อมูล (forward-only, ดู CONVENTIONS §5) · ก่อน migration ใหญ่ให้ `pg_dump` สำรองก่อน
+- **อย่าตั้ง GHCR retention policy ให้ลบ version อัตโนมัติ** — ไม่งั้น image เก่าที่ไว้ rollback จะหาย (default GitHub เก็บหมด = ปลอดภัยดีแล้ว)
+- `WATCHTOWER_CLEANUP=true` ลบแค่ image เก่าใน server (local) — GHCR ยังเก็บครบ ดึงกลับได้เสมอ
+
+---
+
 ## Troubleshooting
 | อาการ | สาเหตุ / แก้ |
 |---|---|
 | Actions ล้มที่ step "Build + push" (403) | ยังไม่เปิด write permission (ข้อ 1) |
 | watchtower log `manifest unknown` / `denied` | server ยัง login ghcr.io ไม่ผ่าน (ข้อ 2–3) หรือ PAT หมดสิทธิ์ |
 | merge แล้ว test ไม่ผ่าน → ไม่ deploy | ✅ ทำงานถูกแล้ว — ดู log ใน Actions ว่า test อะไรพัง |
-| อยาก rollback | `IMAGE_TAG=sha-<commit>` ใน `.env` แล้ว `bash deploy.sh` (CI tag ทุก build ด้วย sha) |
+| อยาก rollback | `bash rollback.sh sha-<commit>` (ดูหัวข้อ Version control / Rollback ข้างบน) |
 | container ใหม่พัง อยากดู | `docker compose -f docker-compose.prod.yml logs -f server` |
 
 ## หมายเหตุด้าน test ใน CI
