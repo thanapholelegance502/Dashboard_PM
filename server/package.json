@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "node prisma/seed.js",
+    "seed:appusers": "node prisma/seed-appusers.js",
     "lark:authorize": "node scripts/authorize.js",
     "sync:once": "node scripts/sync-once.js",
     "test": "vitest run",

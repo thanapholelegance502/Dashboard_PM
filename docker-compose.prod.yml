@@ -43,10 +43,32 @@ services:
     restart: unless-stopped
     depends_on:
       - server
-    ports:
-      - "80:80" # ต่อ reverse proxy/certbot ชั้นนอกสำหรับ HTTPS
+    # ไม่ publish host port — ให้ ingress (caddy/cloudflared) รับจากภายนอกแล้วต่อ web:80 ใน network
+    # (ปลอดภัยกว่า + กัน port ชนบน host) · เลือก ingress ด้วย COMPOSE_PROFILES=caddy หรือ tunnel
+    expose:
+      - "80"
     labels:
       com.centurylinklabs.watchtower.enable: "true"
+
+  # 🔒 Caddy ingress (POC) — HTTPS ฟรีจาก Let's Encrypt + DuckDNS · เปิด port 80/443
+  # เปิดใช้:  COMPOSE_PROFILES=caddy  (ใน .env) — หรือ  --profile caddy
+  # ต้องตั้ง PUBLIC_DOMAIN + ACME_EMAIL ใน .env + Caddyfile (root) — ดู docs/POC-DEPLOY.md
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["caddy"]
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # เก็บ cert ข้าม restart (สำคัญ — กันโดน rate limit)
+      - caddy_config:/config
 
   # 🌐 Cloudflare Tunnel — ทางเข้าจากอินเทอร์เน็ต (HTTPS ฟรี) โดย "ไม่ต้องเปิด port เข้า"
   # server ยิง outbound ไปหา Cloudflare เอง → แก้ปัญหา provider ไม่เปิด port หมดจด
@@ -81,3 +103,5 @@ services:
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

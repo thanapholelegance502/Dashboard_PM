@@ -71,5 +71,7 @@ cd server && npm test    # 56 tests
 - `docs/CONVENTIONS.md` — **กฏเขียน code + มาตรฐาน + infra + git** (อ่านก่อนส่ง PR)
 - `docs/DEPLOY.md` — cloud deploy (docker + IP + dev-mode)
 - `docs/CICD.md` — **auto-deploy**: merge main → GitHub Actions → GHCR → Watchtower (pull-based)
-- `docs/CLOUDFLARE-TUNNEL.md` — **HTTPS ฟรี ไม่ต้องเปิด port** (แก้ปัญหา provider + ปลดล็อก SSO)
+- `docs/CLOUDFLARE-TUNNEL.md` — **HTTPS ฟรี ไม่ต้องเปิด port** (สำหรับ staging + domain บริษัท)
+- `docs/POC-DEPLOY.md` — **POC hosting ฟรี**: Oracle Free VM + DuckDNS + Caddy + Lark SSO
+- `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
 - `docs/NEXT-SSO.md` — **งานถัดไป: Lark SSO + HTTPS**

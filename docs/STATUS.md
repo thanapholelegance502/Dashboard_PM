@@ -36,10 +36,11 @@
 |---|---|---|
 | P0-4 | **Deploy cloud** | ✅ **deploy แล้ว** บน `203.150.48.37` (Ubuntu+Docker) — container ครบ, authorize+sync 561 ใบ, nginx 200 · 🔴 ติด provider เปิด port 80/443/22 external (portal ไม่มี firewall UI) |
 | P0-5 | **Auto-deploy (CI/CD)** | ✅ **code พร้อม** — merge main → GitHub Actions (test→build→push GHCR) → Watchtower บน server ดึงมา deploy เอง (pull-based, ไม่ต้อง SSH) · เหลือ **ตั้งค่าครั้งเดียวบน server** → ดู **[CICD.md](CICD.md)** |
-| P0-6 | **HTTPS ฟรี (Cloudflare Tunnel)** | ✅ **code พร้อม** — cloudflared ใน compose (profile) → HTTPS + domain ฟรี ไม่ต้องเปิด port · เหลือเลือกกล่อง (แนะนำ Oracle Free VM) + สร้าง tunnel → **[CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md)** |
-| P0-1 | **Lark SSO + HTTPS** | 🎯 **งานถัดไป** — code พร้อม · tunnel ปลดล็อก HTTPS+domain ให้แล้ว เหลือเปิด `AUTH_MODE=lark_sso`+whitelist → ดู **[NEXT-SSO.md](NEXT-SSO.md)** |
+| P0-7 | **POC hosting ฟรี** | ✅ **code พร้อม** — Caddy ingress (profile) + DuckDNS + whitelist seed → รันบน Oracle Free VM, HTTPS+SSO จริง ไม่ใช้ domain บริษัท · เหลือสมัคร VM + setup → **[POC-DEPLOY.md](POC-DEPLOY.md)** |
+| P0-6 | **HTTPS staging (Cloudflare Tunnel)** | ✅ **code พร้อม** — cloudflared ใน compose (profile tunnel) สำหรับ staging + domain บริษัท → **[CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md)** · แผนย้าย: **[MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md)** |
+| P0-1 | **Lark SSO + HTTPS** | 🎯 เปิดใน POC ได้เลย — code พร้อม · ingress (caddy/tunnel) ปลดล็อก HTTPS+domain · เหลือ whitelist + ทดสอบ flow → **[NEXT-SSO.md](NEXT-SSO.md)** |
 
-→ deploy: [DEPLOY.md](DEPLOY.md) · auto-deploy: [CICD.md](CICD.md) · HTTPS ฟรี: [CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
+→ POC: [POC-DEPLOY.md](POC-DEPLOY.md) · migrate: [MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md) · auto-deploy: [CICD.md](CICD.md) · staging HTTPS: [CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
 
 ---
 

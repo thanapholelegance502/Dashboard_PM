@@ -1,0 +1,8 @@
+# Caddy ingress (POC) — HTTPS ฟรีจาก Let's Encrypt
+# domain + email มาจาก env (docker-compose.prod.yml) → ย้าย domain = แก้ .env ไม่ต้องแตะไฟล์นี้
+# ต่อไป web:80 (nginx serve SPA + proxy /api → server:3000) ใน docker network
+{$PUBLIC_DOMAIN} {
+	encode gzip
+	reverse_proxy web:80
+	tls {$ACME_EMAIL}
+}
