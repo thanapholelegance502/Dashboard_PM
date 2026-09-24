@@ -86,6 +86,8 @@ $DC start server
 ## H-3 — ปิด port + SSH ใช้ key อย่างเดียว
 ข้าวรันเองบน server (ต้องมีคนถือ SSH key — AI ทำให้ไม่ได้)
 
+> สถานะ 24 ก.ย.: ✅ ข้อ 1 (ufw) ทำแล้ว · ⬜ ข้อ 2–3 (SSH key + ปิด password) ข้าวเลื่อนไว้ — อยู่ใน TODO ของ [STATUS.md](STATUS.md)
+
 ```bash
 # 1) firewall: เหลือ 22/80/443
 sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp

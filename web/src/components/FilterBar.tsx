@@ -28,6 +28,7 @@ export default function FilterBar({ projects, filters, onChange }: Props) {
           <option value="AT_RISK">At Risk</option>
           <option value="DELAYED">Delayed</option>
           <option value="DONE">Done</option>
+          <option value="WAITING">Waiting</option>
         </select>
       </label>
 

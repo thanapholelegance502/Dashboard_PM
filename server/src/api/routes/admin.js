@@ -46,7 +46,8 @@ adminRouter.get('/projects', async (_req, res, next) => {
   }
 });
 
-const PROJECT_DATE_FIELDS = ['startDate', 'targetUat', 'targetGolive', 'forecastUat', 'forecastGolive', 'actualUat', 'actualGolive'];
+// ไม่มี forecast แล้ว (ข้าวสั่ง 24 ก.ย.) — column ยังอยู่ใน DB แต่แก้ผ่าน API ไม่ได้
+const PROJECT_DATE_FIELDS = ['startDate', 'targetUat', 'targetGolive', 'actualUat', 'actualGolive'];
 function pickProjectData(body) {
   const data = {};
   for (const k of ['projectCode', 'displayName', 'larkTasklistGuid', 'pmUserId', 'isActive', 'sortOrder', 'budget']) {

@@ -43,10 +43,12 @@ export function computeProjectMetrics(project, tasks, now = new Date()) {
   const progress = resolveEffectiveProgress(project, computedProgress, now);
   const status = resolveEffectiveStatus(project, autoStatus, now);
 
-  const slipDays =
-    project.forecastGolive && project.targetGolive
-      ? daysUntil(project.forecastGolive, project.targetGolive)
-      : null;
+  // ช้ากว่า target Go-Live กี่วัน (บวก = ช้า) — live แล้วเทียบ actual · ยังไม่ live เทียบวันนี้ (เฉพาะเมื่อเลย target)
+  let slipDays = null;
+  if (project.targetGolive) {
+    if (project.actualGolive) slipDays = daysUntil(project.actualGolive, project.targetGolive);
+    else if (now.getTime() > project.targetGolive.getTime()) slipDays = -daysUntil(project.targetGolive, now);
+  }
 
   return {
     counts: { open: kpi.open, done: kpi.done, blocked: kpi.blocker, overdue: kpi.overdue, total: kpi.total },

@@ -11,18 +11,23 @@ describe('computeAutoStatus (02-PM §5.1)', () => {
     expect(r.status).toBe('DONE');
   });
 
-  it('DELAYED เมื่อ forecast > target', () => {
+  it('forecast ไม่มีผลแล้ว (ตัดออก 24 ก.ย.) — ยังไม่ถึง target = ไม่ DELAYED', () => {
     const r = computeAutoStatus(
-      { targetGolive: new Date(now.getTime() + 10 * day), forecastGolive: new Date(now.getTime() + 17 * day) },
+      { targetGolive: new Date(now.getTime() + 30 * day), forecastGolive: new Date(now.getTime() + 60 * day) },
       base, now
     );
-    expect(r.status).toBe('DELAYED');
-    expect(r.reasons[0]).toContain('forecast ช้ากว่า target');
+    expect(r.status).toBe('ON_TRACK');
   });
 
-  it('DELAYED เมื่อเลย target แล้ว', () => {
-    const r = computeAutoStatus({ targetGolive: new Date(now.getTime() - day) }, base, now);
+  it('DELAYED เมื่อเลย target แล้ว + บอกจำนวนวัน', () => {
+    const r = computeAutoStatus({ targetGolive: new Date(now.getTime() - 3 * day) }, base, now);
     expect(r.status).toBe('DELAYED');
+    expect(r.reasons[0]).toContain('3 วัน');
+  });
+
+  it('ไม่คืน WAITING เอง (PM ตั้งผ่าน override เท่านั้น)', () => {
+    const r = computeAutoStatus({}, { ...base, doneCount: 0, progressPct: 0 }, now);
+    expect(r.status).not.toBe('WAITING');
   });
 
   it('AT_RISK เมื่อมี blocker', () => {

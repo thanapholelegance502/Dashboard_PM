@@ -1,6 +1,7 @@
 // ตรงกับ response ของ backend (server/src/api/routes/pm.js, admin.js)
 
-export type ProjectStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'DONE';
+// WAITING = รอเริ่ม — PM ตั้งผ่าน override เท่านั้น (auto ไม่คืนค่านี้)
+export type ProjectStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'DONE' | 'WAITING';
 
 export interface Counts {
   open: number;
@@ -23,12 +24,10 @@ export interface ProjectRow {
   statusReasons: string[];
   startDate: string | null;
   targetUat: string | null;
-  forecastUat: string | null;
   actualUat: string | null;
   targetGolive: string | null;
-  forecastGolive: string | null;
   actualGolive: string | null;
-  slipDays: number | null;
+  slipDays: number | null; // ช้ากว่า target Go-Live กี่วัน (บวก = ช้า) · null = ยังไม่ถึง/ไม่มี target
   hasTargetGolive: boolean;
   counts: Counts;
 }
@@ -38,6 +37,7 @@ export interface Kpis {
   onTrack: number;
   atRisk: number;
   delayed: number;
+  waiting: number;
   uatThisMonth: number;
   goliveThisMonth: number;
 }
@@ -104,9 +104,7 @@ export interface AdminProject {
   larkTasklistGuid: string;
   startDate: string | null;
   targetUat: string | null;
-  forecastUat: string | null;
   targetGolive: string | null;
-  forecastGolive: string | null;
   actualUat: string | null;
   actualGolive: string | null;
   statusOverride: string | null;

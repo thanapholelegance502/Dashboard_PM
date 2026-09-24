@@ -29,6 +29,7 @@ export const PROJECT_STATUS = Object.freeze({
   AT_RISK: 'AT_RISK',
   DELAYED: 'DELAYED',
   DONE: 'DONE',
+  WAITING: 'WAITING', // รอเริ่ม — PM ตั้งผ่าน override เท่านั้น (auto ไม่คืนค่านี้)
 });
 
 export const MATCH_TYPE = Object.freeze({

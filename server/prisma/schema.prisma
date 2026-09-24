@@ -20,12 +20,12 @@ model Project {
   startDate     DateTime?
   targetUat     DateTime?
   targetGolive  DateTime?
-  forecastUat   DateTime?
-  forecastGolive DateTime?
+  forecastUat   DateTime? /// @deprecated ไม่ใช้แล้ว (24 ก.ย. 2026) — เก็บ column ไว้ให้ rollback image เก่าได้ · drop ทีหลัง
+  forecastGolive DateTime? /// @deprecated เหมือนข้างบน
   actualUat     DateTime?
   actualGolive  DateTime?
 
-  statusOverride       String? // ON_TRACK | AT_RISK | DELAYED | null
+  statusOverride       String? // ON_TRACK | AT_RISK | DELAYED | DONE | WAITING | null
   statusOverrideReason String?
   statusOverrideBy     Int?
   statusOverrideAt     DateTime?

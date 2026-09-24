@@ -100,8 +100,8 @@ pmRouter.get('/portfolio', async (req, res, next) => {
         statusAuto: m.status,
         statusReasons: m.statusReasons,
         startDate: p.startDate,
-        targetUat: p.targetUat, forecastUat: p.forecastUat, actualUat: p.actualUat,
-        targetGolive: p.targetGolive, forecastGolive: p.forecastGolive, actualGolive: p.actualGolive,
+        targetUat: p.targetUat, actualUat: p.actualUat,
+        targetGolive: p.targetGolive, actualGolive: p.actualGolive,
         slipDays: null,
         hasTargetGolive: p.targetGolive != null,
         counts: m.counts,
@@ -113,8 +113,9 @@ pmRouter.get('/portfolio', async (req, res, next) => {
         onTrack: all.filter((r) => r.metrics.status === PROJECT_STATUS.ON_TRACK).length,
         atRisk: all.filter((r) => r.metrics.status === PROJECT_STATUS.AT_RISK).length,
         delayed: all.filter((r) => r.metrics.status === PROJECT_STATUS.DELAYED).length,
-        uatThisMonth: all.filter((r) => sameBkkMonth(r.project.forecastUat ?? r.project.targetUat, now)).length,
-        goliveThisMonth: all.filter((r) => sameBkkMonth(r.project.forecastGolive ?? r.project.targetGolive, now)).length,
+        waiting: all.filter((r) => r.metrics.status === PROJECT_STATUS.WAITING).length,
+        uatThisMonth: all.filter((r) => sameBkkMonth(r.project.targetUat, now)).length,
+        goliveThisMonth: all.filter((r) => sameBkkMonth(r.project.targetGolive, now)).length,
       };
       return res.json({
         asOf: asOf,
@@ -146,10 +147,8 @@ pmRouter.get('/portfolio', async (req, res, next) => {
       statusReasons: m.statusReasons,
       startDate: p.startDate,
       targetUat: p.targetUat,
-      forecastUat: p.forecastUat,
       actualUat: p.actualUat,
       targetGolive: p.targetGolive,
-      forecastGolive: p.forecastGolive,
       actualGolive: p.actualGolive,
       slipDays: m.slipDays,
       hasTargetGolive: p.targetGolive != null,
@@ -163,11 +162,12 @@ pmRouter.get('/portfolio', async (req, res, next) => {
       onTrack: all.filter((r) => r.metrics.status === PROJECT_STATUS.ON_TRACK).length,
       atRisk: all.filter((r) => r.metrics.status === PROJECT_STATUS.AT_RISK).length,
       delayed: all.filter((r) => r.metrics.status === PROJECT_STATUS.DELAYED).length,
+      waiting: all.filter((r) => r.metrics.status === PROJECT_STATUS.WAITING).length,
       uatThisMonth: all.filter((r) =>
-        sameBkkMonth(r.project.forecastUat ?? r.project.targetUat, now)
+        sameBkkMonth(r.project.targetUat, now)
       ).length,
       goliveThisMonth: all.filter((r) =>
-        sameBkkMonth(r.project.forecastGolive ?? r.project.targetGolive, now)
+        sameBkkMonth(r.project.targetGolive, now)
       ).length,
     };
 
@@ -186,8 +186,9 @@ pmRouter.get('/milestones', async (req, res, next) => {
     const projects = await prisma.project.findMany({ where: { isActive: true } });
     const items = [];
     for (const p of projects) {
-      const uat = p.forecastUat ?? p.targetUat;
-      const golive = p.forecastGolive ?? p.targetGolive;
+      // milestone ที่ยังไม่เกิด = มี target แต่ยังไม่มี actual
+      const uat = p.actualUat ? null : p.targetUat;
+      const golive = p.actualGolive ? null : p.targetGolive;
       for (const [type, date] of [['UAT', uat], ['GO_LIVE', golive]]) {
         const d = daysUntil(date, now);
         if (date && d != null && d >= 0 && (days == null || d <= days)) {

@@ -40,7 +40,7 @@ Lark Task API ─► extract ─► transform ─► load ─► PostgreSQL ─�
 
 ## Data model (Prisma — หลัก)
 
-- **Project** — projectCode, larkTasklistGuid, target/forecast/actual UAT+Go-Live, status/progress override, **budget**
+- **Project** — projectCode, larkTasklistGuid, target/actual UAT+Go-Live (forecast ตัดออก 24 ก.ย. — column ยังอยู่แต่ไม่ใช้), status/progress override, **budget**
 - **Task** — larkTaskGuid, sectionName, **deptCode/bucketCode/sectionWeight** (คำนวณจาก rule), dueAt, assignee, soft-delete
 - **SectionRule** — matchType/pattern/deptCode/bucketCode/weight/priority/projectId (map section → dept/bucket/weight, แก้ผ่าน Admin)
 - **PaymentInstallment** — งวดการเงิน (name/amount/dueDate/status)
