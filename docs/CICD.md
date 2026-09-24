@@ -133,6 +133,8 @@ git revert <commit เสีย>    # สร้าง commit ที่ย้อ�
 |---|---|
 | Actions ล้มที่ step "Build + push" (403) | ยังไม่เปิด write permission (ข้อ 1) |
 | watchtower log `manifest unknown` / `denied` | server ยัง login ghcr.io ไม่ผ่าน (ข้อ 2–3) หรือ PAT หมดสิทธิ์ |
+| watchtower log `client version 1.25 is too old` | แก้แล้วใน compose (`DOCKER_API_VERSION=1.44`) → `git pull` + `up -d watchtower` · Docker เก่ามาก (< 25) ให้ตั้ง `WATCHTOWER_DOCKER_API_VERSION` ใน `.env` ตาม `docker version` (API version ของ Server) |
+| `docker login` บอก `config.json: is a directory` | เคย up watchtower ก่อน login (compose เก่า mount เป็นไฟล์) → `$DC rm -sf watchtower && rmdir /root/.docker/config.json` แล้ว login ใหม่ · compose ปัจจุบัน mount ทั้งโฟลเดอร์แล้ว ไม่เกิดซ้ำ |
 | merge แล้ว test ไม่ผ่าน → ไม่ deploy | ✅ ทำงานถูกแล้ว — ดู log ใน Actions ว่า test อะไรพัง |
 | อยาก rollback | `bash rollback.sh sha-<commit>` (ดูหัวข้อ Version control / Rollback ข้างบน) |
 | container ใหม่พัง อยากดู | `docker compose -f docker-compose.prod.yml logs -f server` |

@@ -108,8 +108,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # creds สำหรับดึง image private จาก GHCR (สร้างด้วย `docker login ghcr.io` บน server)
-      - ${DOCKER_CONFIG_DIR:-/root/.docker}/config.json:/config.json:ro
+      # mount ทั้งโฟลเดอร์ (ไม่ใช่ไฟล์) — ถ้า up ก่อน login, docker จะสร้าง config.json เป็นโฟลเดอร์เปล่า
+      # แล้ว `docker login` เขียนทับไม่ได้ ("config.json: is a directory") · โฟลเดอร์ไม่มีปัญหานี้
+      - ${DOCKER_CONFIG_DIR:-/root/.docker}:/config:ro
     environment:
+      DOCKER_CONFIG: /config                   # ให้ watchtower อ่าน /config/config.json
+      # containrrr/watchtower (เลิกพัฒนาแล้ว) คุยด้วย API 1.25 → Docker Engine ใหม่ปฏิเสธ
+      # ("client version 1.25 is too old. Minimum supported API version is 1.44") → บังคับ API ใหม่
+      DOCKER_API_VERSION: ${WATCHTOWER_DOCKER_API_VERSION:-1.44}
       WATCHTOWER_LABEL_ENABLE: "true"          # update เฉพาะ container ที่ enable
       WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-120} # เช็คทุก 120 วินาที
       WATCHTOWER_CLEANUP: "true"               # ลบ image เก่าหลัง update (กันดิสก์เต็ม)
