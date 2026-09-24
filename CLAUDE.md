@@ -13,9 +13,10 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **POC ขึ้นจริง** `https://elegancedb.duckdns.org` — Vultr + DuckDNS + Caddy (HTTPS) → [docs/POC-DEPLOY.md](docs/POC-DEPLOY.md)
 - ✅ **Lark SSO + whitelist** (`AUTH_MODE=lark_sso`) · Admin แท็บ "ผู้ใช้" · หน้า 🚫 คนนอก whitelist
 - ✅ **Portal หลายแผนก** — landing เลือกบอร์ด · สิทธิ์บอร์ดรายคน · บอร์ด QA ที่ `/qa/` (repo Dashboard_Tester) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
-- ✅ **CI/CD** — merge main → test + build image ขึ้น GHCR (ผ่าน) · watchtower บน server ยังปิด (รอ `docker login ghcr.io`)
-- ✅ **Hardening** — session ใน Postgres (H-1) · `scripts/backup-db.sh` (H-2) · เชื่อม Lark ใหม่ผ่านปุ่ม Admin
-- ⏳ **รอข้าว** — ตั้ง cron backup + ปิด port/SSH password (H-3) → [docs/MAINTAINING.md](docs/MAINTAINING.md)
+- ✅ **CI/CD ทำงานแล้ว** — merge main → test + build image → GHCR → watchtower บน Vultr deploy เอง (~2–5 นาที)
+- ✅ **Hardening** — session ใน Postgres (H-1) · backup cron ทุกวัน (H-2) · ufw 22/80/443 · เชื่อม Lark ใหม่ผ่านปุ่ม Admin
+- ⏳ **บอร์ด QA** — ยังไม่เปิดบน server · ทีม tester แก้ repo เองผ่าน PR (ข้าวรีวิว + merge `Main`) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
+- 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
 
 ## Stack + โครงสร้าง
@@ -69,7 +70,7 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/DEPLOY.md` — cloud deploy (docker + IP + dev-mode)
 - `docs/CICD.md` — **auto-deploy**: merge main → GitHub Actions → GHCR → Watchtower (pull-based)
 - `docs/CLOUDFLARE-TUNNEL.md` — **HTTPS ฟรี ไม่ต้องเปิด port** (สำหรับ staging + domain บริษัท)
-- `docs/POC-DEPLOY.md` — **POC hosting ฟรี**: Oracle Free VM + DuckDNS + Caddy + Lark SSO
+- `docs/POC-DEPLOY.md` — **POC hosting**: VPS (Vultr) + DuckDNS + Caddy + Lark SSO
 - `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
-- `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + checklist repo Dashboard_Tester
+- `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)

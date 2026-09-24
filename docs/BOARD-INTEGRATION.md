@@ -56,64 +56,178 @@
 - `.env`, token, private key, `*.pem` → `.gitignore` ตั้งแต่วันแรก
 - ถ้าเคย commit key ไปแล้ว: **ลบไฟล์ไม่พอ** (ยังอยู่ใน git history) → ต้อง **ออก key ใหม่** แล้วเลิกใช้ key เก่า
 
-### 5. Deploy — แบบเดียวกับ PM (merge main แล้วขึ้นเอง)
+### 5. Deploy — merge Main แล้วขึ้นเอง (แบบเดียวกับ PM)
 - repo ต้องมี `Dockerfile` ที่ build แล้วรันได้เลย · port ตามที่ตกลง (QA = 5173)
 - ข้อมูลที่ต้องรอด restart (token, ตั้งค่า) เก็บใน **โฟลเดอร์เดียว** เพื่อ mount เป็น volume (QA = `/app/config`)
-- ใส่ GitHub Actions แบบเดียวกับ `Dashboard_PM/.github/workflows/deploy.yml` → merge main = build + push image `ghcr.io/thanapholelegance502/<repo>:latest`
-  → Watchtower บน server ดึงไปเปลี่ยนเอง (ดู [CICD.md](CICD.md))
+- ใส่ workflow ตาม [template ข้างล่าง](#template-githubworkflowsdeployyml-สำหรับ-repo-แผนก) → PR = build + smoke test · merge เข้า Main = build + push image `ghcr.io/thanapholelegance502/<repo>:latest`
+  → Watchtower บน server ดึงไปเปลี่ยนเอง ภายใน ~2–5 นาที (ดู [CICD.md](CICD.md)) — **ฝั่ง server พร้อมแล้ว ไม่ต้องตั้งอะไรเพิ่ม**
 - ช่วงที่ยังไม่มี CI: build บน server เอง (ดูหัวข้อ "ติดตั้งบน server")
+
+---
+
+## 🔀 flow ส่งงานของทีมแผนก (ข้าวคุม branch `Main`)
+
+```
+น้องแตก branch ของตัวเอง ─► เปิด PR เข้า Main ─► CI: build + smoke test (ต้องเขียว)
+        ─► ข้าวรีวิว + รีเทส ─► ข้าวกด merge ─► CI push image ─► Watchtower deploy เอง
+```
+- **ห้าม push เข้า `Main` ตรง ๆ** — ทุกอย่างผ่าน PR · คนกด merge = **ข้าวคนเดียว**
+- ⚠️ repo แผนกเป็น **private บนบัญชีส่วนตัว (GitHub Free) → ล็อก branch ไม่ได้** (branch protection ของ private repo ต้อง GitHub Pro)
+  → template กันไว้แบบฟรี: **deploy เฉพาะเมื่อคน merge/push คือข้าว** (`RELEASER`) · น้อง push Main ตรงโดยพลาด = **ไม่ deploy + CI แดงเตือน**
+  → กันอุบัติเหตุได้ แต่ไม่กันคนตั้งใจแก้ workflow · ถ้าต้องการล็อกจริง: อัปเกรด GitHub Pro (~$4/เดือน) แล้วเปิด branch protection (Require PR + status check `smoke`)
+
+### checklist รีวิว PR ของข้าว
+- [ ] CI `smoke` เขียว
+- [ ] ไม่มี secret ใน diff: `.env`, token, `*.pem`, `*_key`, connection string ที่มีรหัสผ่าน
+- [ ] ไม่มี URL ขึ้นต้น `/` แบบ hardcode (redirect / fetch / `<script src>` / ลิงก์) — ต้องต่อ `BASE_PATH` หรือ relative
+- [ ] ไม่เพิ่ม `ports:` ใน compose / ไม่เปิดแอปออกนอก nginx
+- [ ] รีเทสในเครื่อง (Docker Desktop) แล้วกดดูหน้าที่แก้:
+  ```bash
+  git fetch origin pull/<เลข PR>/head:pr-<เลข PR> && git checkout pr-<เลข PR>
+  docker build -t qa-pr . && docker run --rm -p 5173:5173 -e BASE_PATH=/qa qa-pr
+  # เปิด http://localhost:5173/qa/  (ไม่มี DB/Lark ก็เปิดได้ — ข้อมูลจะว่าง)
+  ```
+
+### template `.github/workflows/deploy.yml` สำหรับ repo แผนก
+ก็อบไปวางทั้งไฟล์ · ⚠️ `Dashboard_Tester` ใช้ branch ชื่อ **`Main` (M ใหญ่)** — บอร์ดอื่นแก้ `branches` + `BASE_PATH` + `APP_PORT` ให้ตรง
+```yaml
+# CI + Deploy — PR = build + smoke test · merge เข้า Main (โดยข้าว) = push image → Watchtower deploy เอง
+name: CI + Deploy
+
+on:
+  pull_request:
+    branches: [Main]
+  push:
+    branches: [Main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASER: thanapholelegance502   # คนเดียวที่ merge แล้ว deploy (GitHub Free ล็อก branch private ไม่ได้)
+  BASE_PATH: /qa                   # path ของบอร์ดใน portal
+  APP_PORT: 5173
+
+jobs:
+  # ── ด่านกั้น: image build ได้ + แอปขึ้นใต้ BASE_PATH (ไม่ต้องมี DB/Lark) ──
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t app:ci .
+      - name: Run + เช็กหน้าเว็บใต้ BASE_PATH
+        run: |
+          docker run -d --name app -p "$APP_PORT:$APP_PORT" -e BASE_PATH="$BASE_PATH" app:ci
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null "http://localhost:$APP_PORT$BASE_PATH/" && exit 0
+            sleep 1
+          done
+          echo "::error::แอปไม่ตอบที่ $BASE_PATH/ ภายใน 30 วินาที"
+          exit 1
+      - name: log แอป (ถ้าล้ม)
+        if: failure()
+        run: docker logs app || true
+
+  # ── merge เข้า Main → build + push GHCR (Watchtower บน server ดึงไป deploy) ──
+  deploy:
+    needs: smoke
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Main ต้องผ่าน PR ที่ข้าว merge เท่านั้น
+        if: github.actor != env.RELEASER
+        run: |
+          echo "::error::push เข้า Main โดย ${{ github.actor }} — ต้องเปิด PR ให้ $RELEASER merge → รอบนี้ไม่ deploy"
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # image → ghcr.io/<owner>/<repo> (metadata-action แปลงเป็นตัวเล็กให้ → dashboard_tester)
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
 
 ---
 
 ## ✅ Checklist สำหรับ repo `Dashboard_Tester` (ทีม QA)
 
-สำรวจโค้ดเมื่อ 24 ก.ย. 2026 — แอป QA ใช้ `BASE_PATH` ได้อยู่แล้ว (ดีมาก) เหลือแก้:
+สำรวจโค้ดล่าสุด 24 ก.ย. 2026 (commit `7b58b99` บน `Main`) — แอป QA ใช้ `BASE_PATH` ได้อยู่แล้ว (ดีมาก) เหลือแก้:
 
-| # | ต้องแก้ | ไฟล์ | ทำไม |
-|---|---|---|---|
-| 1 | redirect หลัง Lark login จาก `'/?lark_login=success'` → ต่อ `BASE_PATH` | `server.js` (callback `/api/lark/oauth/callback`) | ไม่งั้นหลังเชื่อม Lark จะเด้งออกไปหน้า Portal |
-| 2 | เพิ่ม env `DATABASE_SSL` (false = ไม่ใช้ SSL) | `server/db.js` (ตอนนี้บังคับ SSL เมื่อ host ไม่ใช่ localhost) | ไม่งั้นต่อ database `qa` ในเครื่อง portal ไม่ได้ |
-| 3 | ลบ `oracle_key`, `oracle_key.pub` ออกจาก repo **และออก key ใหม่** | root ของ repo | ไฟล์ key ถูก commit ไว้ — อยู่ใน history แล้ว |
-| 4 | เพิ่ม `.github/workflows/deploy.yml` (build + push GHCR) | ใหม่ | ให้ merge main แล้ว server อัพเดทเอง |
-| 5 | (แนะนำ) หน้าตั้งค่า Lark / cron ให้เฉพาะ `X-Portal-Role` = ADMIN/PM | `server.js` | กัน VIEWER ไปเปลี่ยนการเชื่อม Lark ของแอป |
+| # | ต้องแก้ | ไฟล์ | ทำไม | สถานะ |
+|---|---|---|---|---|
+| 1 | redirect หลัง Lark login จาก `'/?lark_login=success'` → ต่อ `BASE_PATH` | `server.js` (callback `/api/lark/oauth/callback`) | ไม่งั้นหลังเชื่อม Lark จะเด้งออกไปหน้า Portal | ⬜ ยังไม่เริ่ม |
+| 2 | เพิ่ม env `DATABASE_SSL` (false = ไม่ใช้ SSL) | `server/db.js` (ตอนนี้บังคับ SSL เมื่อ host ไม่ใช่ localhost) | ไม่งั้นต่อ database `qa` ในเครื่อง portal ไม่ได้ | ⬜ ยังไม่เริ่ม |
+| 3 | เอา `oracle_key`, `oracle_key.pub` ออกจาก git **และออก key ใหม่** | root ของ repo | ใส่ `.gitignore` แล้ว **แต่ไฟล์ยังถูก track อยู่** (.gitignore ไม่ลบไฟล์ที่ commit ไปแล้ว) → `git rm --cached oracle_key oracle_key.pub` + สร้าง key ใหม่ + ลบ key เก่าออกจาก `~/.ssh/authorized_keys` ของเครื่องที่ใช้ key นี้ | ⬜ ยังไม่เริ่ม |
+| 4 | เพิ่ม `.github/workflows/deploy.yml` | ใหม่ — ก็อบ [template](#template-githubworkflowsdeployyml-สำหรับ-repo-แผนก) | merge Main แล้ว server อัพเดทเอง | ⬜ ยังไม่เริ่ม |
+| 5 | (แนะนำ) หน้าตั้งค่า Lark / cron ให้เฉพาะ `X-Portal-Role` = ADMIN/PM | `server.js` | กัน VIEWER ไปเปลี่ยนการเชื่อม Lark ของแอป | ⬜ ยังไม่เริ่ม |
 
-ลำดับที่แนะนำ: ข้อ 3 ก่อน (ความปลอดภัย) → 1 → 2 → 4
+ลำดับที่แนะนำ: ข้อ 3 ก่อน (ความปลอดภัย) → 4 (มี CI ไว้เช็ก PR ถัดไป) → 1 → 2 → 5 · **ทำทีละ PR** ให้ข้าวรีวิวง่าย
+
+> ไม่ต้องรอ checklist ครบถึงจะเปิดบอร์ด QA — เฟส 1 (ใช้ Supabase เดิม) เปิดบน server ได้เลย: ข้อ 1 แค่ทำให้หลังเชื่อม Lark ในแอป QA เด้งไปหน้า portal (กดกลับ `/qa/` เอง) · ข้อ 2 จำเป็นตอนย้าย DB มาเครื่องเราเท่านั้น
 
 ---
 
 ## ติดตั้งบน server (ข้าว / คนดูแล portal)
 
-### ครั้งแรก — บอร์ด QA
+### ครั้งแรก — บอร์ด QA (เฟส 1: DB = Supabase เดิมของทีม tester)
+ต้องมีก่อน: `DATABASE_URL` (Supabase) + ค่า Lark ของแอป QA จากทีม tester
 ```bash
 cd ~/Dashboard_PM
-# 1) โค้ดแอป QA → image (ช่วงที่ repo tester ยังไม่มี CI)
+DC="docker compose -f docker-compose.prod.yml"
+
+# 1) image ของแอป QA — ช่วงที่ repo tester ยังไม่มี CI ให้ build บน server
+#    (repo private → clone ต้องใช้ token ที่มีสิทธิ์อ่าน repo หรือ deploy key)
 git clone https://github.com/thanapholelegance502/Dashboard_Tester.git ~/Dashboard_Tester
 docker build -t ghcr.io/thanapholelegance502/dashboard_tester:latest ~/Dashboard_Tester
 
 # 2) ตั้งค่าแอป QA
-cp qa.env.example qa.env && nano qa.env      # เฟส 1: DATABASE_URL = Supabase เดิมของทีม tester
+cp qa.env.example qa.env && nano qa.env      # DATABASE_URL = Supabase เดิม · LARK_REDIRECT_URI
 
-# 3) เปิด profile qa (root .env)
+# 3) เปิด profile qa (root .env) แล้ว up
 sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa/' .env
-
-docker compose -f docker-compose.prod.yml up -d --scale watchtower=0
+$DC up -d
 ```
-- Lark Console: เพิ่ม redirect URI `https://<domain>/qa/api/lark/oauth/callback` (สำหรับ sync ของแอป QA)
+- Lark Console: เพิ่ม redirect URI `https://elegancedb.duckdns.org/qa/api/lark/oauth/callback` (สำหรับ sync ของแอป QA)
 - ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **QA** ให้ทีม tester
+- ⚠️ ช่วงก่อนมี CI: watchtower จะ log ว่าอัปเดต `qa` ไม่ได้ (ยังไม่มี image บน GHCR) = ปกติ · และตอน pull ให้ระบุ `$DC pull server web` (อย่า pull `qa`)
 
-### อัพเดทแอป QA (ช่วงยังไม่มี CI)
-```bash
-git -C ~/Dashboard_Tester pull
-docker build -t ghcr.io/thanapholelegance502/dashboard_tester:latest ~/Dashboard_Tester
-docker compose -f docker-compose.prod.yml up -d qa
-```
+### อัพเดทแอป QA
+- **มี CI แล้ว (checklist ข้อ 4)**: ไม่ต้องทำอะไร — ข้าว merge PR ใน `Dashboard_Tester` → Watchtower เปลี่ยนเอง (server login GHCR ไว้แล้ว ใช้ได้กับ image นี้ด้วย)
+- **ยังไม่มี CI**:
+  ```bash
+  git -C ~/Dashboard_Tester pull
+  docker build -t ghcr.io/thanapholelegance502/dashboard_tester:latest ~/Dashboard_Tester
+  docker compose -f docker-compose.prod.yml up -d qa
+  ```
 
 ### ย้าย DB ของ QA มาไว้ในเครื่อง (หลังทีม tester ทำ checklist ข้อ 2)
 ```bash
 bash scripts/create-board-db.sh qa    # จด DATABASE_URL ที่ได้ → ใส่ qa.env + DATABASE_SSL=false
 docker compose -f docker-compose.prod.yml up -d qa
 ```
-> backup: เมื่อตั้ง backup DB รายวัน ต้องรวม database `qa` ด้วย (ดู STATUS.md)
+> backup: `scripts/backup-db.sh` เก็บทุก database อัตโนมัติ — database `qa` ติดไปด้วยเอง (ดู [MAINTAINING.md](MAINTAINING.md#backup))
 
 ---
 
