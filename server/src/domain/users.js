@@ -9,6 +9,17 @@ function fail(status, message) {
   return e;
 }
 
+/**
+ * อีเมลจาก Lark ที่ใช้หา AppUser ตอน login — ทั้ง email (อาจเป็นอีเมลส่วนตัว) และ enterprise_email (อีเมลบริษัท)
+ * ตัวพิมพ์เล็กเสมอ เพราะ whitelist เก็บเป็นตัวพิมพ์เล็ก (normalizeNewUser / seed:appusers)
+ */
+export function loginEmailCandidates(info) {
+  const list = [info?.enterprise_email, info?.email]
+    .filter((e) => typeof e === 'string' && e.trim())
+    .map((e) => e.trim().toLowerCase());
+  return [...new Set(list)];
+}
+
 /** ตรวจ + ทำความสะอาดข้อมูลผู้ใช้ใหม่ · ผิด → throw status 400 */
 export function normalizeNewUser(body = {}) {
   const email = String(body.email ?? '').trim().toLowerCase();

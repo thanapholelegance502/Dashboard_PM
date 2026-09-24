@@ -4,6 +4,7 @@
 import { prisma } from '../../db/prisma.js';
 import { env } from '../../config/env.js';
 import { buildAuthorizeUrl, exchangeCodeForUserInfo } from '../../lark/auth.js';
+import { loginEmailCandidates } from '../../domain/users.js';
 
 /** @typedef {{ id:number, email:string, displayName:string, role:string }} SessionUser */
 
@@ -37,10 +38,12 @@ class LarkSsoAuth {
   async handleCallback(code) {
     const info = await exchangeCodeForUserInfo(code);
     const openId = info.open_id;
-    const email = info.email ?? info.enterprise_email;
+    // เดิมใช้แค่ email (ถ้ามีอีเมลส่วนตัวใน Lark จะไม่เคยเทียบอีเมลบริษัท) + เทียบตัวพิมพ์ตรงตัว → คนที่อยู่ใน whitelist โดน 403
+    const emails = loginEmailCandidates(info);
     let user = null;
     if (openId) user = await prisma.appUser.findUnique({ where: { larkOpenId: openId } });
-    if (!user && email) user = await prisma.appUser.findUnique({ where: { email } });
+    if (!user && emails.length) user = await prisma.appUser.findFirst({ where: { email: { in: emails } } });
+    if (!user) console.warn(`[auth] login ไม่อยู่ใน whitelist: ${emails.join(', ') || '(Lark ไม่ส่งอีเมล)'}`);
     if (!user || !user.isActive) {
       const e = new Error('ไม่พบสิทธิ์ (whitelist only) — ติดต่อ Admin');
       e.status = 403;
