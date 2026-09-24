@@ -42,6 +42,12 @@ cd ../web && npm install && npm run dev   # :5173 (proxy /api → :3000)
 cd server && npm test    # 56 tests
 ```
 
+## 🔴 กติกา Git (ห้ามละเมิด — คน + AI)
+- **ห้าม push เข้า `main` ตรง ๆ เด็ดขาด** · ทุกอย่างผ่าน branch + PR เท่านั้น
+- **AI/agent ห้าม push `main` ทุกกรณี** เว้นแต่ข้าวสั่งชัดเจน ณ ตอนนั้น (คำสั่งเก่าไม่นับ)
+- merge main = ขึ้น production ทันที (auto-deploy) → คน merge ได้ = ข้าวเท่านั้น
+- กฏเขียน code/มาตรฐาน/infra เต็ม → **[docs/CONVENTIONS.md](docs/CONVENTIONS.md)**
+
 ## กติกาที่ห้ามละเมิด (จาก 00-MASTER §12)
 1. ตัวเลขทุกตัวต้องไล่กลับไปหาการ์ดใน Lark ได้ (drill-down + ลิงก์)
 2. KPI กับ list ที่อธิบายมัน มาจาก query เดียวกัน
@@ -62,5 +68,11 @@ cd server && npm test    # 56 tests
 - `docs/ARCHITECTURE.md` — โครงโค้ด, data model, API, Lark
 - `docs/DEV.md` — setup, authorize, test
 - `docs/MAINTAINING.md` — re-authorize, backup, เพิ่มบอร์ด, troubleshoot
+- `docs/CONVENTIONS.md` — **กฏเขียน code + มาตรฐาน + infra + git** (อ่านก่อนส่ง PR)
 - `docs/DEPLOY.md` — cloud deploy (docker + IP + dev-mode)
+- `docs/CICD.md` — **auto-deploy**: merge main → GitHub Actions → GHCR → Watchtower (pull-based)
+- `docs/CLOUDFLARE-TUNNEL.md` — **HTTPS ฟรี ไม่ต้องเปิด port** (สำหรับ staging + domain บริษัท)
+- `docs/POC-DEPLOY.md` — **POC hosting ฟรี**: Oracle Free VM + DuckDNS + Caddy + Lark SSO
+- `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
+- `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + checklist repo Dashboard_Tester
 - `docs/NEXT-SSO.md` — **งานถัดไป: Lark SSO + HTTPS**

@@ -172,3 +172,23 @@ export interface SectionRule {
   projectId: number | null;
   isActive: boolean;
 }
+
+// ผู้ใช้ที่เข้าระบบได้ (whitelist SSO) — แท็บ "ผู้ใช้" ในหน้าตั้งค่า
+export interface AppUserRow {
+  id: number;
+  email: string;
+  displayName: string;
+  role: 'ADMIN' | 'PM' | 'VIEWER';
+  isActive: boolean;
+  linked: boolean; // login ด้วย Lark แล้วอย่างน้อย 1 ครั้ง
+  boards: string[]; // บอร์ดที่ติ๊กให้ (ADMIN เห็นทุกบอร์ดโดยไม่ดูค่านี้)
+}
+
+// ทะเบียนบอร์ดแผนก — มาจาก server/src/domain/boards.js ผ่าน /api/auth/me
+export interface BoardInfo {
+  code: string;
+  name: string;
+  desc: string;
+  path?: string;
+  kind: 'internal' | 'external' | 'soon'; // external = แอปทีมแผนกที่ nginx วางไว้ใต้ path (เปิดเต็มหน้า)
+}

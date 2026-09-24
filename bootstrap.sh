@@ -50,8 +50,16 @@ else
   echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" > .env
 fi
 
-echo "════ 3/4  build + up (postgres + backend + web) ════"
-$DC -f docker-compose.prod.yml up -d --build
+echo "════ 3/4  login GHCR + pull image + up (postgres + backend + web + watchtower) ════"
+# image เป็น private บน GHCR → ต้อง login ก่อน (ครั้งเดียว) — ดู docs/CICD.md
+if ! grep -q "ghcr.io" "${DOCKER_CONFIG:-$HOME/.docker}/config.json" 2>/dev/null; then
+  echo "   ⚠️  ยังไม่ได้ login ghcr.io — image ดึงไม่ได้"
+  read -rp "   GitHub username: " GH_USER
+  read -rsp "   GHCR token (PAT, สิทธิ์ read:packages): " GH_PAT; echo
+  echo "$GH_PAT" | docker login ghcr.io -u "$GH_USER" --password-stdin
+fi
+$DC -f docker-compose.prod.yml pull
+$DC -f docker-compose.prod.yml up -d
 
 echo "════ 4/4  seed ════"
 echo "   รอ DB…"; sleep 10

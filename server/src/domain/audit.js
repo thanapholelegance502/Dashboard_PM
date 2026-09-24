@@ -3,7 +3,7 @@ import { prisma } from '../db/prisma.js';
 
 /**
  * @param {object} a { appUserId, entity, entityId, action, before?, after?, reason? }
- *   entity: Project | SectionRule | AttentionItem | Member
+ *   entity: Project | SectionRule | AttentionItem | Member | PaymentInstallment | AppUser
  *   action: CREATE | UPDATE | DELETE | OVERRIDE
  */
 export async function writeAudit(a, tx = prisma) {

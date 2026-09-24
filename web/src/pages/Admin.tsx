@@ -5,8 +5,10 @@ import {
   getUnmappedSections, getSectionRules, createProject,
   getBudget, createInstallment, patchInstallment, deleteInstallment,
   createSectionRule, patchSectionRule, deleteSectionRule, recompute,
+  getUsers, createUser, patchUser,
 } from '../lib/api';
-import type { AdminProject, UnmappedSection, SectionRule, BudgetResult } from '../lib/types';
+import type { AdminProject, UnmappedSection, SectionRule, BudgetResult, AppUserRow } from '../lib/types';
+import { useAuth } from '../lib/auth';
 import { money, fmtDate } from '../lib/format';
 
 const DATE_FIELDS: (keyof AdminProject)[] = [
@@ -24,15 +26,21 @@ const btnGhost = 'text-sm text-slate-500 hover:text-slate-900';
 const label = 'text-[11px] font-medium uppercase tracking-wider text-slate-400';
 
 export default function Admin() {
-  const [tab, setTab] = useState<'projects' | 'rules'>('projects');
+  const [tab, setTab] = useState<'projects' | 'rules' | 'users'>('projects');
+  const isAdmin = useAuth().user?.role === 'ADMIN'; // จัดการผู้ใช้ = ADMIN เท่านั้น
   return (
-    <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules">
+    <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules · Users">
       <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <nav className="flex gap-6 border-b border-slate-200 text-sm">
           <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')}>โครงการ · Milestone</TabBtn>
           <TabBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Section Rules</TabBtn>
+          {isAdmin && <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>ผู้ใช้</TabBtn>}
         </nav>
-        <div className="py-6">{tab === 'projects' ? <ProjectsTab /> : <RulesTab />}</div>
+        <div className="py-6">
+          {tab === 'projects' && <ProjectsTab />}
+          {tab === 'rules' && <RulesTab />}
+          {tab === 'users' && isAdmin && <UsersTab />}
+        </div>
       </div>
     </AppShell>
   );
@@ -347,5 +355,134 @@ function Field({ label: l, children }: { label: string; children: React.ReactNod
       <span className={label}>{l}</span>
       {children}
     </label>
+  );
+}
+
+// ══ Users (AppUser whitelist) ══════════════════════
+const ROLES: AppUserRow['role'][] = ['ADMIN', 'PM', 'VIEWER'];
+const ROLE_HINT: Record<AppUserRow['role'], string> = {
+  ADMIN: 'ทุกอย่าง + จัดการผู้ใช้', PM: 'ดู + ตั้งค่าโครงการ', VIEWER: 'ดูอย่างเดียว',
+};
+
+function UsersTab() {
+  const me = useAuth().user;
+  const [users, setUsers] = useState<AppUserRow[]>([]);
+  const [msg, setMsg] = useState('');
+  const [form, setForm] = useState<{ email: string; displayName: string; role: AppUserRow['role']; boards: string[] } | null>(null);
+  const boardOpts = (me?.boardCatalog ?? []).filter((b) => b.kind !== 'soon'); // ให้สิทธิ์ได้เฉพาะบอร์ดที่เปิดใช้
+  const toggle = (list: string[], code: string) => (list.includes(code) ? list.filter((c) => c !== code) : [...list, code]);
+
+  const load = () => getUsers().then(setUsers).catch((e) => setMsg((e as Error).message));
+  useEffect(() => { load(); }, []);
+
+  // error จาก API (409 ตัวเอง / ADMIN คนสุดท้าย / อีเมลซ้ำ) → Toast แล้วโหลดใหม่ให้ select กลับค่าเดิม
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    try { await fn(); setMsg(ok); } catch (e) { setMsg((e as Error).message); }
+    load();
+  };
+  const saveNew = async () => {
+    if (!form?.email.trim()) { setMsg('ต้องใส่อีเมล Lark'); return; }
+    await run(() => createUser(form), `เพิ่ม ${form.email} แล้ว — login ด้วย Lark ได้ทันที`);
+    setForm(null);
+  };
+
+  return (
+    <div>
+      <Toast msg={msg} />
+      <p className="mb-4 text-xs text-slate-500">
+        คนที่อยู่ในรายการนี้ (และเปิดใช้งาน) เท่านั้นที่ login ด้วย Lark ได้ · ใช้อีเมลเดียวกับบัญชี Lark ของบริษัท
+      </p>
+
+      {form ? (
+        <div className="mb-6 rounded-lg border border-slate-300 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">เพิ่มผู้ใช้</h3>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Field label="อีเมล Lark"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={input + ' w-full'} placeholder="name@elegance.co.th" /></Field>
+            <Field label="ชื่อ (ไม่ใส่ก็ได้)"><input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} className={input + ' w-full'} /></Field>
+            <Field label="สิทธิ์">
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as AppUserRow['role'] })} className={input + ' w-full'}>
+                {ROLES.map((r) => <option key={r} value={r}>{r} — {ROLE_HINT[r]}</option>)}
+              </select>
+            </Field>
+          </div>
+          {form.role !== 'ADMIN' && (
+            <div className="mt-3">
+              <div className={label}>บอร์ดที่เข้าได้</div>
+              <div className="mt-1 flex flex-wrap gap-4">
+                {boardOpts.map((b) => (
+                  <label key={b.code} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input type="checkbox" checked={form.boards.includes(b.code)} onChange={() => setForm({ ...form, boards: toggle(form.boards, b.code) })} />
+                    {b.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="mt-3 flex gap-3">
+            <button onClick={saveNew} className={btnPrimary}>บันทึก</button>
+            <button onClick={() => setForm(null)} className={btnGhost}>ยกเลิก</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setForm({ email: '', displayName: '', role: 'VIEWER', boards: [] })}
+          className="mb-4 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-900">
+          + เพิ่มผู้ใช้
+        </button>
+      )}
+
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
+            <th className="pb-2 text-left font-medium">อีเมล</th><th className="pb-2 text-left font-medium">ชื่อ</th>
+            <th className="pb-2 text-left font-medium">สิทธิ์</th><th className="pb-2 text-left font-medium">บอร์ด</th>
+            <th className="pb-2 text-left font-medium">Lark</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => {
+            const self = u.id === me?.id; // แถวตัวเอง: ล็อก role + ปิดใช้งาน (กันล็อกตัวเองออก)
+            return (
+              <tr key={u.id} className={`border-b border-slate-100 ${u.isActive ? '' : 'opacity-40'}`}>
+                <td className="py-1.5 pr-2 text-slate-700">{u.email}{self && <span className="ml-1.5 text-[11px] text-slate-400">(คุณ)</span>}</td>
+                <td className="pr-2">
+                  <input defaultValue={u.displayName} className={sel + ' w-36'}
+                    onBlur={(e) => e.target.value.trim() && e.target.value !== u.displayName && run(() => patchUser(u.id, { displayName: e.target.value }), 'แก้ชื่อแล้ว')} />
+                </td>
+                <td className="pr-2">
+                  <select value={u.role} disabled={self} className={sel}
+                    onChange={(e) => run(() => patchUser(u.id, { role: e.target.value as AppUserRow['role'] }), `เปลี่ยน ${u.email} เป็น ${e.target.value}`)}>
+                    {ROLES.map((r) => <option key={r}>{r}</option>)}
+                  </select>
+                </td>
+                <td className="pr-2">
+                  {u.role === 'ADMIN' ? (
+                    <span className="text-xs text-slate-400">ทุกบอร์ด</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {boardOpts.map((b) => (
+                        <label key={b.code} className="flex items-center gap-1 text-xs text-slate-600">
+                          <input type="checkbox" checked={u.boards.includes(b.code)}
+                            onChange={() => run(() => patchUser(u.id, { boards: toggle(u.boards, b.code) }), `อัปเดตบอร์ดของ ${u.email}`)} />
+                          {b.code}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </td>
+                <td className="pr-2 text-xs text-slate-400">{u.linked ? 'ผูกแล้ว' : 'ยังไม่เคย login'}</td>
+                <td className="text-right">
+                  {!self && (
+                    <button onClick={() => run(() => patchUser(u.id, { isActive: !u.isActive }), u.isActive ? `ปิดใช้งาน ${u.email}` : `เปิดใช้งาน ${u.email}`)}
+                      className={`text-xs ${u.isActive ? 'text-slate-400 hover:text-red-600' : 'text-doing hover:underline'}`}>
+                      {u.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

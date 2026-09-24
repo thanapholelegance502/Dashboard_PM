@@ -15,6 +15,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'unauth' | 'forbidden'>('loading');
 
   const load = () => {
+    // callback ส่งกลับมา /?auth=forbidden เมื่อบัญชีไม่อยู่ใน whitelist
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'forbidden') {
+      params.delete('auth');
+      const q = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (q ? `?${q}` : ''));
+      setState('forbidden');
+      return;
+    }
     setState('loading');
     getMe()
       .then((u) => { setUser(u); setState('ok'); })

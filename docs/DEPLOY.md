@@ -1,6 +1,7 @@
 # DEPLOY — migrate ขึ้น cloud (Linux)
 
 > stack ออกแบบให้ย้ายง่าย (Prisma + env-based config) · เอกสารนี้ = แผน ทำจริงเมื่อมีเครื่อง/domain
+> 🔄 **Auto-deploy (merge main → server อัพเดทเอง):** ดู **[CICD.md](CICD.md)** — deploy จริงรอบต่อ ๆ ไปไม่ต้อง SSH เข้า server
 
 ---
 
