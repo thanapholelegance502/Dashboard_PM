@@ -27,13 +27,15 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "axios": "^1.7.7",
+    "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-session": "^1.18.1",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "prisma": "^5.22.0",

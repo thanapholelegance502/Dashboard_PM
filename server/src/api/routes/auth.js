@@ -2,6 +2,9 @@
 import { Router } from 'express';
 import { authProvider } from '../auth/provider.js';
 import { BOARDS, effectiveBoards, canAccessBoard } from '../../domain/boards.js';
+import { classifyCallback } from '../../domain/oauthState.js';
+import { exchangeCodeForToken } from '../../lark/auth.js';
+import { writeAudit } from '../../domain/audit.js';
 
 export const authRouter = Router();
 
@@ -16,11 +19,45 @@ authRouter.get('/login', (req, res, next) => {
   }
 });
 
-// GET /api/auth/callback → แลก code → set session
+const escapeHtml = (v) =>
+  String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+/** หน้าโชว์ code ให้ก็อบไปรัน CLI (flow `npm run lark:authorize`) — ไม่แลก code เอง */
+const cliCodePage = (code) => `<!doctype html><meta charset="utf-8"><title>Lark authorize</title>
+<body style="font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 16px">
+<h3>ได้ code แล้ว — ก็อบไปรันบน server ภายใน ~1 นาที</h3>
+<pre style="background:#f1f5f9;padding:12px;white-space:pre-wrap;word-break:break-all">docker compose -f docker-compose.prod.yml exec server npm run lark:authorize -- --code ${escapeHtml(code)}</pre>
+<p style="color:#64748b">ทางที่ง่ายกว่า: ADMIN กดปุ่ม "เชื่อม Lark ใหม่" ในหน้าตั้งค่า (ไม่ต้องใช้ server)</p></body>`;
+
+// GET /api/auth/callback → แยก flow ตาม state (domain/oauthState.js)
+//   etl = ปุ่ม "เชื่อม Lark ใหม่" ของ ADMIN · cli = npm run lark:authorize · login = SSO
 authRouter.get('/callback', async (req, res, next) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code) return res.status(400).json({ error: 'ไม่มี code' });
+
+    const kind = classifyCallback({
+      state,
+      sessionState: req.session?.larkEtlState,
+      isAdmin: req.user?.role === 'ADMIN',
+    });
+    if (kind === 'cli') return res.type('html').send(cliCodePage(code));
+    if (kind === 'reject') return res.redirect('/admin?lark=failed');
+    if (kind === 'etl') {
+      delete req.session.larkEtlState; // ใช้ครั้งเดียว
+      try {
+        const tok = await exchangeCodeForToken(String(code));
+        await writeAudit({
+          appUserId: req.user.id, entity: 'OAuthToken', entityId: 'lark', action: 'UPDATE',
+          after: { expiresAt: tok.expiresAt }, reason: 'เชื่อม Lark ใหม่จากหน้าตั้งค่า',
+        });
+        return res.redirect('/admin?lark=connected');
+      } catch (err) {
+        console.error('[auth] แลก code เป็น token ETL ล้มเหลว:', err.message);
+        return res.redirect('/admin?lark=failed');
+      }
+    }
+
     const user = await authProvider.handleCallback(String(code));
     if (user && req.session) req.session.userId = user.id;
     // login แล้วพากลับหน้าเว็บ (SPA) → AuthGate เช็ก session ผ่าน /me → เข้า dashboard

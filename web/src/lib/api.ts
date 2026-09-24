@@ -45,6 +45,10 @@ export const loginUrl = '/api/auth/login';
 
 // ── Sync ────────────────────────────────────────────
 export const runSyncNow = () => req<unknown>(`/sync/run`, { method: 'POST' });
+export const getSyncStatus = () =>
+  req<{ isStale: boolean; needReauthorize: boolean; lastSuccess: { finishedAt: string | null } | null }>(`/sync/status`);
+/** ADMIN: เชื่อม Lark ใหม่ (token ETL) — เป็นลิงก์ redirect ไม่ใช่ fetch */
+export const larkAuthorizeUrl = '/api/admin/lark/authorize';
 
 // ── Admin ───────────────────────────────────────────
 export const getAdminProjects = () => req<AdminProject[]>(`/admin/projects`);
