@@ -173,15 +173,15 @@ jobs:
 
 ## ✅ Checklist สำหรับ repo `Dashboard_Tester` (ทีม QA)
 
-สำรวจโค้ดล่าสุด 24 ก.ย. 2026 (commit `7b58b99` บน `Main`) — แอป QA ใช้ `BASE_PATH` ได้อยู่แล้ว (ดีมาก) เหลือแก้:
+อัปเดต 24 ก.ย. 2026 (commit `0f5738c` บน `Main`, PR #4) — รีเทสจริงแล้ว: ไฟล์นอก index/js/css ตอบ 404 · VIEWER โดน 403 ที่ endpoint ตั้งค่า/เชื่อม Lark/sync · CI push image `dashboard_tester:latest` ขึ้น GHCR แล้ว
 
 | # | ต้องแก้ | ไฟล์ | ทำไม | สถานะ |
 |---|---|---|---|---|
-| 1 | redirect หลัง Lark login จาก `'/?lark_login=success'` → ต่อ `BASE_PATH` | `server.js` (callback `/api/lark/oauth/callback`) | ไม่งั้นหลังเชื่อม Lark จะเด้งออกไปหน้า Portal | ⬜ ยังไม่เริ่ม |
-| 2 | เพิ่ม env `DATABASE_SSL` (false = ไม่ใช้ SSL) | `server/db.js` (ตอนนี้บังคับ SSL เมื่อ host ไม่ใช่ localhost) | ไม่งั้นต่อ database `qa` ในเครื่อง portal ไม่ได้ | ⬜ ยังไม่เริ่ม |
-| 3 | เอา `oracle_key`, `oracle_key.pub` ออกจาก git **และออก key ใหม่** | root ของ repo | ใส่ `.gitignore` แล้ว **แต่ไฟล์ยังถูก track อยู่** (.gitignore ไม่ลบไฟล์ที่ commit ไปแล้ว) → `git rm --cached oracle_key oracle_key.pub` + สร้าง key ใหม่ + ลบ key เก่าออกจาก `~/.ssh/authorized_keys` ของเครื่องที่ใช้ key นี้ | ⬜ ยังไม่เริ่ม |
-| 4 | เพิ่ม `.github/workflows/deploy.yml` | ใหม่ — ก็อบ [template](#template-githubworkflowsdeployyml-สำหรับ-repo-แผนก) | merge Main แล้ว server อัพเดทเอง | ⬜ ยังไม่เริ่ม |
-| 5 | (แนะนำ) หน้าตั้งค่า Lark / cron ให้เฉพาะ `X-Portal-Role` = ADMIN/PM | `server.js` | กัน VIEWER ไปเปลี่ยนการเชื่อม Lark ของแอป | ⬜ ยังไม่เริ่ม |
+| 1 | redirect หลัง Lark login จาก `'/?lark_login=success'` → ต่อ `BASE_PATH` | `server.js` (callback `/api/lark/oauth/callback`) | ไม่งั้นหลังเชื่อม Lark จะเด้งออกไปหน้า Portal | ✅ |
+| 2 | เพิ่ม env `DATABASE_SSL` (false = ไม่ใช้ SSL) | `server/db.js` (ตอนนี้บังคับ SSL เมื่อ host ไม่ใช่ localhost) | ไม่งั้นต่อ database `qa` ในเครื่อง portal ไม่ได้ | ✅ |
+| 3 | เอา `oracle_key`, `oracle_key.pub` ออกจาก git **และออก key ใหม่** | root ของ repo | ใส่ `.gitignore` แล้ว **แต่ไฟล์ยังถูก track อยู่** (.gitignore ไม่ลบไฟล์ที่ commit ไปแล้ว) → `git rm --cached oracle_key oracle_key.pub` + สร้าง key ใหม่ + ลบ key เก่าออกจาก `~/.ssh/authorized_keys` ของเครื่องที่ใช้ key นี้ | ✅ ลบแล้ว + revoke ที่ Oracle |
+| 4 | เพิ่ม `.github/workflows/deploy.yml` | ใหม่ — ก็อบ [template](#template-githubworkflowsdeployyml-สำหรับ-repo-แผนก) | merge Main แล้ว server อัพเดทเอง | 🟡 build + smoke + push GHCR ใช้ได้ · **ยังไม่มีประตู `RELEASER`** (ใคร push Main ก็ deploy) — น้องใส่เป็น TODO ไว้ |
+| 5 | (แนะนำ) หน้าตั้งค่า Lark / cron ให้เฉพาะ `X-Portal-Role` = ADMIN/PM | `server.js` | กัน VIEWER ไปเปลี่ยนการเชื่อม Lark ของแอป | ✅ + แก้ช่องโหว่เสิร์ฟไฟล์ทุกไฟล์ (token หลุด) แล้ว |
 
 ลำดับที่แนะนำ: ข้อ 3 ก่อน (ความปลอดภัย) → 4 (มี CI ไว้เช็ก PR ถัดไป) → 1 → 2 → 5 · **ทำทีละ PR** ให้ข้าวรีวิวง่าย
 
@@ -197,21 +197,21 @@ jobs:
 cd ~/Dashboard_PM
 DC="docker compose -f docker-compose.prod.yml"
 
-# 1) image ของแอป QA — ช่วงที่ repo tester ยังไม่มี CI ให้ build บน server
-#    (repo private → clone ต้องใช้ token ที่มีสิทธิ์อ่าน repo หรือ deploy key)
-git clone https://github.com/thanapholelegance502/Dashboard_Tester.git ~/Dashboard_Tester
-docker build -t ghcr.io/thanapholelegance502/dashboard_tester:latest ~/Dashboard_Tester
+git pull                                     # เอา qa.env.example ล่าสุด
 
-# 2) ตั้งค่าแอป QA
-cp qa.env.example qa.env && nano qa.env      # DATABASE_URL = Supabase เดิม · LARK_REDIRECT_URI
+# 1) ตั้งค่าแอป QA — AppID / AppSecret / DATABASE_URL ขอจากทีม tester
+cp qa.env.example qa.env && nano qa.env
 
-# 3) เปิด profile qa (root .env) แล้ว up
+# 2) เปิด profile qa (root .env) → ดึง image จาก GHCR (CI ของ repo tester push ให้แล้ว) → up
 sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa/' .env
+$DC pull qa
 $DC up -d
+$DC logs qa --tail 20                        # ต้องเห็น "QA dashboard running at http://localhost:5173/qa/"
 ```
 - Lark Console: เพิ่ม redirect URI `https://elegancedb.duckdns.org/qa/api/lark/oauth/callback` (สำหรับ sync ของแอป QA)
 - ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **QA** ให้ทีม tester
-- ⚠️ ช่วงก่อนมี CI: watchtower จะ log ว่าอัปเดต `qa` ไม่ได้ (ยังไม่มี image บน GHCR) = ปกติ · และตอน pull ให้ระบุ `$DC pull server web` (อย่า pull `qa`)
+- เปิด `https://<domain>/qa/` ด้วยบัญชี ADMIN/PM → กดเชื่อม Lark ในแอป QA → sync
+- หลังจากนี้ merge `Main` ของ repo tester → watchtower เปลี่ยน container `qa` เอง (login GHCR ชุดเดิมใช้ได้)
 
 ### อัพเดทแอป QA
 - **มี CI แล้ว (checklist ข้อ 4)**: ไม่ต้องทำอะไร — ข้าว merge PR ใน `Dashboard_Tester` → Watchtower เปลี่ยนเอง (server login GHCR ไว้แล้ว ใช้ได้กับ image นี้ด้วย)
