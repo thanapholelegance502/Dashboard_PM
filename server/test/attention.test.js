@@ -14,7 +14,7 @@ const metrics = (over = {}) => ({
 
 describe('computeAutoAttention (02-PM §7)', () => {
   it('DELAYED → สร้าง item DELAYED', () => {
-    const { toCreate } = computeAutoAttention(project, metrics({ status: 'DELAYED', slipDays: -7 }), [], [], now);
+    const { toCreate } = computeAutoAttention(project, metrics({ status: 'DELAYED', slipDays: 7 }), [], [], now);
     expect(toCreate).toHaveLength(1);
     expect(toCreate[0].autoKey).toBe('DELAYED');
     expect(toCreate[0].impactText).toContain('7 วัน');

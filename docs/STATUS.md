@@ -16,7 +16,7 @@
 
 ### P2 — PM Dashboard + Admin
 - **หน้า PM**: KPI 6 · Gantt (เขียนเอง) · donut สถานะ (+ legend) · milestones 14 วัน · CEO Attention (auto) · trend · drill-down (คลิกทุกตัวเลข + ลิงก์กลับ Lark)
-- **หน้า Admin**: จัดการ project · กรอก target/forecast date · status/progress override (reason บังคับ + หมดอายุ 14 วัน) · เพิ่มบอร์ดใหม่ · test-connection
+- **หน้า Admin**: จัดการ project · กรอก target/actual date · status/progress override (reason บังคับ + หมดอายุ 14 วัน) · เพิ่มบอร์ดใหม่ · test-connection
 - Progress = ถ่วงน้ำหนักตาม section · สถานะ auto (On Track/At Risk/Delayed) + เหตุผล
 - AuditLog ทุก mutation
 

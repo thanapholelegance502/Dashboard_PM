@@ -40,7 +40,7 @@ export default function PM() {
     const rows = portfolio?.projects ?? [];
     const by: Record<string, number> = {};
     for (const p of rows) by[p.status] = (by[p.status] ?? 0) + 1;
-    return (['ON_TRACK', 'AT_RISK', 'DELAYED', 'DONE'] as ProjectStatus[])
+    return (['WAITING', 'ON_TRACK', 'AT_RISK', 'DELAYED', 'DONE'] as ProjectStatus[])
       .filter((s) => by[s])
       .map((s) => ({ name: STATUS_LABEL[s], value: by[s], color: statusColor(s), onClick: () => setFilters((f) => ({ ...f, status: s })) }));
   }, [portfolio]);
@@ -102,7 +102,7 @@ export default function PM() {
 
       {/* Gantt */}
       <div className="mb-5">
-        <SectionCard title="Project Timeline (Target vs Forecast)" icon={<IconChart />} className="!p-0">
+        <SectionCard title="Project Timeline (Target vs Actual)" icon={<IconChart />} className="!p-0">
           <GanttTimeline projects={portfolio.projects} onProjectClick={(code) => setDrill({ code, title: 'การ์ดทั้งหมด' })} />
         </SectionCard>
       </div>
@@ -132,7 +132,8 @@ export default function PM() {
           <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500">
             <Legend color={statusColor('ON_TRACK')} text="On Track — ตามแผน" />
             <Legend color={statusColor('AT_RISK')} text="At Risk — เสี่ยง (blocker/overdue/ใกล้ครบ<80%)" />
-            <Legend color={statusColor('DELAYED')} text="Delayed — เลยกำหนด/forecast ช้ากว่า target" />
+            <Legend color={statusColor('DELAYED')} text="Delayed — เลยกำหนด target Go-Live" />
+            <Legend color={statusColor('WAITING')} text="Waiting — รอเริ่ม (PM ตั้ง)" />
           </div>
         </SectionCard>
 

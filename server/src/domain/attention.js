@@ -24,7 +24,7 @@ export function computeAutoAttention(project, metrics, tasks, existingAutoOpen, 
 
   // 1) โปรเจกต์ DELAYED
   if (metrics.status === PROJECT_STATUS.DELAYED) {
-    const slip = metrics.slipDays != null && metrics.slipDays < 0 ? Math.abs(metrics.slipDays) : null;
+    const slip = metrics.slipDays != null && metrics.slipDays > 0 ? metrics.slipDays : null;
     desired.set('DELAYED', {
       title: 'โปรเจกต์ล่าช้า — ต้องตัดสินใจขยาย timeline หรือเพิ่มทรัพยากร',
       issueType: 'DECISION',

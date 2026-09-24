@@ -51,4 +51,31 @@ describe('computeProjectMetrics (AUS_SILVER)', () => {
     expect(m.status).toBe('ON_TRACK'); // override ชนะ
     expect(m.statusSource).toBe('OVERRIDE');
   });
+
+  it('override WAITING (PM ตั้งเอง) → status WAITING, auto ยังเป็นค่าคำนวณ', () => {
+    const project = { id: 1, statusOverride: 'WAITING', statusOverrideAt: new Date(now.getTime() - day) };
+    const m = computeProjectMetrics(project, tasks, now);
+    expect(m.status).toBe('WAITING');
+    expect(m.statusSource).toBe('OVERRIDE');
+    expect(m.statusAuto).toBe('ON_TRACK');
+  });
+});
+
+describe('slipDays — ช้ากว่า target Go-Live (บวก = ช้า)', () => {
+  const tasks = ausTasks();
+  const at = (days) => new Date(now.getTime() + days * day);
+
+  it('ยังไม่ถึง target → null', () => {
+    expect(computeProjectMetrics({ id: 1, targetGolive: at(10) }, tasks, now).slipDays).toBeNull();
+  });
+  it('ยังไม่ live แต่เลย target 4 วัน → 4', () => {
+    expect(computeProjectMetrics({ id: 1, targetGolive: at(-4) }, tasks, now).slipDays).toBe(4);
+  });
+  it('live ช้ากว่า target 5 วัน → 5 · live ก่อน target → ติดลบ', () => {
+    expect(computeProjectMetrics({ id: 1, targetGolive: at(-10), actualGolive: at(-5) }, tasks, now).slipDays).toBe(5);
+    expect(computeProjectMetrics({ id: 1, targetGolive: at(-5), actualGolive: at(-7) }, tasks, now).slipDays).toBe(-2);
+  });
+  it('ไม่มี target → null', () => {
+    expect(computeProjectMetrics({ id: 1, actualGolive: at(-1) }, tasks, now).slipDays).toBeNull();
+  });
 });

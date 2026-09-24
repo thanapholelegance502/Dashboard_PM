@@ -12,11 +12,11 @@ import { useAuth } from '../lib/auth';
 import { money, fmtDate } from '../lib/format';
 
 const DATE_FIELDS: (keyof AdminProject)[] = [
-  'startDate', 'targetUat', 'forecastUat', 'targetGolive', 'forecastGolive', 'actualUat', 'actualGolive',
+  'startDate', 'targetUat', 'actualUat', 'targetGolive', 'actualGolive',
 ];
 const DATE_LABEL: Record<string, string> = {
-  startDate: 'Start', targetUat: 'Target UAT', forecastUat: 'Forecast UAT',
-  targetGolive: 'Target Go-Live', forecastGolive: 'Forecast Go-Live', actualUat: 'Actual UAT', actualGolive: 'Actual Go-Live',
+  startDate: 'Start', targetUat: 'Target UAT', actualUat: 'Actual UAT',
+  targetGolive: 'Target Go-Live', actualGolive: 'Actual Go-Live',
 };
 
 // ── shared styles ──────────────────────────────────
@@ -137,7 +137,7 @@ function ProjectsTab() {
     setMsg(r.ok ? `${code}: อ่านได้ ${r.cards} การ์ด / ${r.sections} section` : `${code}: ${r.error}`);
   };
   const doStatusOverride = async (code: string) => {
-    const status = prompt('สถานะ (ON_TRACK/AT_RISK/DELAYED/DONE):'); if (!status) return;
+    const status = prompt('สถานะ (ON_TRACK/AT_RISK/DELAYED/DONE/WAITING — WAITING = รอเริ่ม):'); if (!status) return;
     const reason = prompt('เหตุผล (≥10 ตัวอักษร):') ?? '';
     try { await statusOverride(code, status, reason); setMsg(`override สถานะ ${code}`); load(); }
     catch (e) { setMsg((e as Error).message); }

@@ -42,10 +42,3 @@ export function money(v: number | null | undefined): string {
   if (v === null || v === undefined) return '—';
   return `${v.toLocaleString('th-TH')} ฿`;
 }
-
-/** slip เป็นข้อความ: +7 วัน / ตรงเวลา */
-export function slipText(slipDays: number | null): { text: string; late: boolean } {
-  if (slipDays === null) return { text: '—', late: false };
-  if (slipDays <= 0) return { text: 'ตรงเวลา', late: false };
-  return { text: `+${slipDays} วัน`, late: true };
-}

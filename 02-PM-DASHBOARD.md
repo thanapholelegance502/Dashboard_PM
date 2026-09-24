@@ -29,7 +29,7 @@
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ KPI 1  KPI 2  KPI 3  KPI 4  KPI 5  KPI 6                       (§3)          │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ BLOCK A — Project Timeline (Target vs Forecast)                 (§6)         │
+│ BLOCK A — Project Timeline (Target vs Actual)                   (§6)         │
 ├───────────────────────────┬──────────────────────┬───────────────────────────┤
 │ BLOCK B Milestones 14 วัน │ BLOCK C Status donut │ BLOCK D ต้องตัดสินใจ (§7) │
 ├───────────────────────────┴──────────────────────┴───────────────────────────┤
@@ -49,8 +49,8 @@
 | 2 | On Track | `count(status = ON_TRACK)` | กรอง BLOCK A |
 | 3 | At Risk | `count(status = AT_RISK)` | กรอง BLOCK A |
 | 4 | Delayed | `count(status = DELAYED)` | กรอง BLOCK A |
-| 5 | UAT เดือนนี้ | `count(project where COALESCE(forecastUat, targetUat) อยู่ในเดือนปัจจุบัน)` | BLOCK B |
-| 6 | Go-Live เดือนนี้ | `count(project where COALESCE(forecastGolive, targetGolive) อยู่ในเดือนปัจจุบัน)` | BLOCK B |
+| 5 | UAT เดือนนี้ | `count(project where targetUat อยู่ในเดือนปัจจุบัน)` | BLOCK B |
+| 6 | Go-Live เดือนนี้ | `count(project where targetGolive อยู่ในเดือนปัจจุบัน)` | BLOCK B |
 
 - KPI 3, 4 แสดงเป็นสีเหลือง/แดงตาม `theme.ts`
 - ใต้ตัวเลขแสดง % ของทั้งหมด (เช่น `2 (25%)`)
@@ -88,6 +88,8 @@ export function computeProgress(tasks: Task[]): number {
 
 ## 5. สถานะโปรเจกต์ — auto + PM override (ล็อกแล้ว)
 
+> **แก้ 24 ก.ย. 2026 (ข้าวสั่ง):** ตัด forecast ทั้งหมด — milestone UAT/Go-Live มีแค่ **Target + Actual** · DELAYED = เลย target แล้วยังไม่ go-live · เพิ่มสถานะ **`WAITING`** (รอเริ่ม) ที่ **PM ตั้งผ่าน override เท่านั้น** · badge override **ไม่มีไอคอน 🔒** แล้ว (ดูที่มาผ่าน tooltip)
+
 ### 5.1 กติกา auto
 ประเมินตามลำดับ เจอข้อไหนก่อนใช้ข้อนั้น:
 
@@ -97,7 +99,6 @@ function computeAutoStatus(p: Project, m: ProjectMetrics, today: Date): Status {
   if (p.actualGolive) return 'DONE';
 
   // DELAYED
-  if (p.forecastGolive && p.targetGolive && p.forecastGolive > p.targetGolive) return 'DELAYED';
   if (p.targetGolive && today > p.targetGolive) return 'DELAYED';
 
   // AT_RISK
@@ -112,9 +113,10 @@ function computeAutoStatus(p: Project, m: ProjectMetrics, today: Date): Status {
 | สถานะ | เงื่อนไข |
 |---|---|
 | `DONE` | มี `actualGolive` แล้ว |
-| `DELAYED` | `forecastGolive > targetGolive` **หรือ** เลย `targetGolive` แล้วยังไม่ go-live |
+| `DELAYED` | เลย `targetGolive` แล้วยังไม่ go-live |
 | `AT_RISK` | ไม่ delayed แต่: มี blocker ≥ 1 **หรือ** overdue > 10% ของงานค้าง **หรือ** เหลือ ≤14 วันถึง target แต่ progress < 80% |
 | `ON_TRACK` | นอกนั้น |
+| `WAITING` | รอเริ่ม — **auto ไม่คืนค่านี้** · PM ตั้งผ่าน override เท่านั้น (กติกา override เดิม: reason บังคับ, AuditLog, หมดอายุ 14 วัน) |
 
 **ต้องเก็บ "เหตุผลที่ระบบให้สถานะนี้"** เป็น string list แล้วแสดงเป็น tooltip เช่น
 `"At Risk เพราะ: มีงานติดปัญหา 3 ใบ · งานเกินกำหนด 12% (5/41)"`
@@ -123,14 +125,14 @@ function computeAutoStatus(p: Project, m: ProjectMetrics, today: Date): Status {
 ### 5.2 Override
 - PM กดเปลี่ยนสถานะได้จากหน้า Admin หรือจากแถวใน BLOCK A
 - **เหตุผลเป็น required field** (ขั้นต่ำ 10 ตัวอักษร) — ไม่กรอกไม่ให้บันทึก
-- แสดงเป็น badge สีตาม override + ไอคอน 🔒 + tooltip `"PM ปรับเป็น On Track · เหตุผล: <...> · ระบบคำนวณได้ At Risk · <ชื่อ> 18 ก.ย."`
+- แสดงเป็น badge สีตาม override (ไม่มีไอคอน 🔒 — ตัดออก 24 ก.ย.) + tooltip `"PM ปรับเป็น On Track · เหตุผล: <...> · ระบบคำนวณได้ At Risk · <ชื่อ> 18 ก.ย."`
 - ลง `AuditLog` ทุกครั้ง (`action = OVERRIDE`)
 - **override หมดอายุ 14 วัน** เหมือน progress
 - ถ้า auto status เปลี่ยนไปเป็นค่าที่แย่กว่า override หลัง override ถูกตั้ง → ขึ้นเตือน PM ในหน้า Admin ว่า "สถานะจริงแย่ลงแล้ว ยืนยัน override อีกครั้งไหม"
 
 ---
 
-## 6. BLOCK A — Project Timeline (Target vs Forecast)
+## 6. BLOCK A — Project Timeline (Target vs Actual)
 
 นี่คือบล็อกที่สำคัญที่สุดของหน้า **ต้องเขียน component เอง** (Recharts ทำ gantt ไม่ได้)
 
@@ -143,24 +145,22 @@ function computeAutoStatus(p: Project, m: ProjectMetrics, today: Date): Status {
 | PM | `Member.nickname` |
 | Progress | bar + % (§4) |
 | Start | `startDate` |
-| Target End | `targetGolive` |
-| Forecast End | `forecastGolive` (ถ้าว่าง = ใช้ target, แสดงจาง ๆ) |
-| Slip | `forecastGolive - targetGolive` เป็นวัน — แสดง `+7 วัน` สีแดง / `ตรงเวลา` |
+| Target Go-Live | `targetGolive` |
+| Actual Go-Live | `actualGolive` — ช้ากว่า target แสดงแดง `+N` · ยังไม่ live แต่เลย target แสดงแดง `เลย N วัน` · อื่น ๆ `—` |
 | Status | badge (§5) |
 
-**Timeline (ขวา):** แกน X = สัปดาห์ ครอบคลุม `min(startDate)` ถึง `max(forecastGolive) + 2 สัปดาห์`
+**Timeline (ขวา):** แกน X = สัปดาห์ ครอบคลุม `min(startDate)` ถึง `max(actualGolive ?? targetGolive) + 2 สัปดาห์`
 
 | สัญลักษณ์ | ความหมาย |
 |---|---|
-| แถบอ่อน | ช่วงโปรเจกต์ (start → forecast end) |
+| แถบอ่อน | ช่วงโปรเจกต์ (start → actual Go-Live หรือ target ถ้ายังไม่ live) |
 | ◆ เขียวอ่อน | UAT (Target) |
 | ◆ เขียวเข้ม | UAT (Actual) |
 | ◆ น้ำเงินอ่อน | Go-Live (Target) |
-| ◆ น้ำเงินเข้ม | Go-Live (Forecast) |
+| ◆ น้ำเงินเข้ม | Go-Live (Actual) |
 | เส้นแดงแนวตั้ง | วันนี้ |
 
 - hover ◆ → tooltip บอกชื่อ milestone + วันที่ + ต่างจาก target กี่วัน
-- ถ้า forecast ≠ target ให้ลากเส้นประเชื่อมสองจุด + ป้ายจำนวนวันที่ช้า
 
 ### 6.2 Technical note สำหรับ Gantt
 - ใช้ CSS Grid: 1 แถว = 1 โปรเจกต์, คอลัมน์ = สัปดาห์ → ตำแหน่ง ◆ คำนวณเป็น `%` ของความกว้าง
@@ -235,7 +235,7 @@ function computeAutoStatus(p: Project, m: ProjectMetrics, today: Date): Status {
 ## 10. หน้า Admin (ต้องทำพร้อม PM dashboard — ไม่ใช่ทำทีหลัง)
 
 ### แท็บ 1 — โปรเจกต์
-ตาราง CRUD: `projectCode` · `displayName` · `larkTasklistGuid` · `pmUserId` · `startDate` · target/forecast/actual UAT & Go-Live · `isActive` · `sortOrder`
+ตาราง CRUD: `projectCode` · `displayName` · `larkTasklistGuid` · `pmUserId` · `startDate` · target/actual UAT & Go-Live · `isActive` · `sortOrder`
 - ปุ่ม "ทดสอบการเชื่อมต่อ" ต่อแถว → ยิง Lark ดูว่าอ่าน tasklist นี้ได้ไหม + คืนจำนวนการ์ด (ตรวจว่าข้าวเป็นสมาชิกบอร์ดหรือยัง)
 - ช่อง status override + reason
 - ช่อง progress override
@@ -267,7 +267,7 @@ CRUD `AttentionItem` (ดู §7)
 GET  /api/pm/portfolio?pm=&status=&projectCode=
      → { asOf, lastSyncAt, kpis{...}, projects[ { code, displayName, pm, progressPct,
          progressSource: 'AUTO'|'OVERRIDE', status, statusSource, statusReasons[],
-         startDate, targetUat, actualUat, targetGolive, forecastGolive, slipDays,
+         startDate, targetUat, actualUat, targetGolive, actualGolive, slipDays,
          counts{ open, done, blocked, overdue, total } } ] }
 
 GET  /api/pm/milestones?days=14
