@@ -22,7 +22,9 @@ authRouter.get('/callback', async (req, res, next) => {
     if (!code) return res.status(400).json({ error: 'ไม่มี code' });
     const user = await authProvider.handleCallback(String(code));
     if (user && req.session) req.session.userId = user.id;
-    res.json({ ok: true, user: user ? { id: user.id, role: user.role } : null });
+    // login แล้วพากลับหน้าเว็บ (SPA) → AuthGate เช็ก session ผ่าน /me → เข้า dashboard
+    // (เดิมตอบ JSON ทำให้ค้างที่หน้า /api/auth/callback)
+    res.redirect('/');
   } catch (err) {
     next(err);
   }
