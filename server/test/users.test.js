@@ -1,6 +1,6 @@
 // จัดการ AppUser — กันข้อมูลผิด + กัน admin ล็อกตัวเองออก (MASTER §7)
 import { describe, it, expect } from 'vitest';
-import { normalizeNewUser, assertUserChangeAllowed } from '../src/domain/users.js';
+import { normalizeNewUser, assertUserChangeAllowed, loginEmailCandidates } from '../src/domain/users.js';
 
 const statusOf = (fn) => {
   try {
@@ -60,5 +60,20 @@ describe('assertUserChangeAllowed', () => {
   });
   it('role ไม่รู้จัก → 400', () => {
     expect(check(viewer, { role: 'OWNER' })).toBe(400);
+  });
+});
+
+describe('loginEmailCandidates — อีเมลที่ใช้หา whitelist ตอน login', () => {
+  it('มีทั้งอีเมลส่วนตัว + อีเมลบริษัท → ได้ทั้งคู่ (เดิมใช้แค่ email → คนใน whitelist โดน 403)', () => {
+    expect(loginEmailCandidates({ email: 'someone@gmail.com', enterprise_email: 'staff@elegance.co.th' }))
+      .toEqual(['staff@elegance.co.th', 'someone@gmail.com']);
+  });
+  it('ตัวพิมพ์ใหญ่/ช่องว่าง → ตัวพิมพ์เล็ก (whitelist เก็บตัวเล็ก)', () => {
+    expect(loginEmailCandidates({ email: ' Staff@Elegance.co.th ' })).toEqual(['staff@elegance.co.th']);
+  });
+  it('ซ้ำกัน → เหลืออันเดียว · ไม่มีอีเมล → []', () => {
+    expect(loginEmailCandidates({ email: 'a@b.co', enterprise_email: 'A@B.co' })).toEqual(['a@b.co']);
+    expect(loginEmailCandidates({ email: '', enterprise_email: null })).toEqual([]);
+    expect(loginEmailCandidates(undefined)).toEqual([]);
   });
 });
