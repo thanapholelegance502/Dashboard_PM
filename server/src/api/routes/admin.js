@@ -7,6 +7,7 @@ import { fetchSections, fetchAllTasks } from '../../lark/tasks.js';
 import { PROJECT_STATUS } from '../../domain/enums.js';
 import { resolveSectionRule } from '../../domain/bucket.js';
 import { recomputeMetricsAndAttention } from '../../etl/postprocess.js';
+import { normalizeNewUser, assertUserChangeAllowed } from '../../domain/users.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireRole('ADMIN', 'PM')); // ทุก endpoint ต้อง ADMIN|PM
@@ -353,6 +354,53 @@ adminRouter.delete('/installments/:id', async (req, res, next) => {
     await prisma.paymentInstallment.delete({ where: { id } });
     await writeAudit({ appUserId: uid(req), entity: 'PaymentInstallment', entityId: id, action: 'DELETE', before });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── ผู้ใช้ (AppUser whitelist) — ADMIN เท่านั้น (PM ห้ามตั้ง role ตัวเอง) ──
+// ไม่มี DELETE: ใช้ปิดใช้งานแทน เพื่อให้ AuditLog ยังอ้างถึงคนได้
+const adminOnly = requireRole('ADMIN');
+const userRow = (u) => ({
+  id: u.id, email: u.email, displayName: u.displayName, role: u.role, isActive: u.isActive, linked: !!u.larkOpenId,
+});
+
+adminRouter.get('/users', adminOnly, async (_req, res, next) => {
+  try {
+    const users = await prisma.appUser.findMany({ orderBy: [{ isActive: 'desc' }, { email: 'asc' }] });
+    res.json(users.map(userRow));
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminRouter.post('/users', adminOnly, async (req, res, next) => {
+  try {
+    const data = normalizeNewUser(req.body);
+    const created = await prisma.appUser.create({ data });
+    await writeAudit({ appUserId: uid(req), entity: 'AppUser', entityId: created.id, action: 'CREATE', after: data });
+    res.json(userRow(created));
+  } catch (e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'มีอีเมลนี้ในระบบแล้ว' });
+    next(e);
+  }
+});
+
+adminRouter.patch('/users/:id', adminOnly, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const before = await prisma.appUser.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+    const data = {};
+    if (req.body.role !== undefined) data.role = String(req.body.role).toUpperCase();
+    if (req.body.isActive !== undefined) data.isActive = Boolean(req.body.isActive);
+    if (req.body.displayName !== undefined) data.displayName = String(req.body.displayName).trim() || before.displayName;
+    const activeAdminCount = await prisma.appUser.count({ where: { role: 'ADMIN', isActive: true } });
+    assertUserChangeAllowed({ actorId: uid(req), target: before, change: data, activeAdminCount });
+    const updated = await prisma.appUser.update({ where: { id }, data });
+    await writeAudit({ appUserId: uid(req), entity: 'AppUser', entityId: id, action: 'UPDATE', before: userRow(before), after: data });
+    res.json(userRow(updated));
   } catch (e) {
     next(e);
   }

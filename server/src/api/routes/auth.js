@@ -26,6 +26,8 @@ authRouter.get('/callback', async (req, res, next) => {
     // (เดิมตอบ JSON ทำให้ค้างที่หน้า /api/auth/callback)
     res.redirect('/');
   } catch (err) {
+    // ไม่อยู่ใน whitelist → พาไปหน้า 🚫 ของ SPA แทน JSON error ดิบ
+    if (err.status === 403) return res.redirect('/?auth=forbidden');
     next(err);
   }
 });

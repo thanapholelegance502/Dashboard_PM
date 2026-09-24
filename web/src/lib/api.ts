@@ -1,6 +1,6 @@
 import type {
   Portfolio, Milestone, TrendResponse, AttentionItem, DrilldownResult,
-  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult,
+  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow,
 } from './types';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -79,3 +79,10 @@ export const patchInstallment = (id: number, data: Partial<Installment>) =>
   req<Installment>(`/admin/installments/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteInstallment = (id: number) =>
   req<{ ok: boolean }>(`/admin/installments/${id}`, { method: 'DELETE' });
+
+// ── ผู้ใช้ (ADMIN เท่านั้น) ─────────────────────────
+export const getUsers = () => req<AppUserRow[]>(`/admin/users`);
+export const createUser = (data: { email: string; displayName?: string; role: AppUserRow['role'] }) =>
+  req<AppUserRow>(`/admin/users`, { method: 'POST', body: JSON.stringify(data) });
+export const patchUser = (id: number, data: Partial<Pick<AppUserRow, 'role' | 'isActive' | 'displayName'>>) =>
+  req<AppUserRow>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

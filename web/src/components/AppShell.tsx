@@ -13,10 +13,12 @@ interface Props {
 const navItems = [
   { to: '/', label: 'Portfolio' },
   { to: '/finance', label: 'การเงิน' },
-  { to: '/admin', label: 'ตั้งค่า' },
+  { to: '/admin', label: 'ตั้งค่า', roles: ['ADMIN', 'PM'] }, // VIEWER เข้าหน้าตั้งค่าไม่ได้ (backend 403)
 ];
 
 export default function AppShell({ title, eyebrow, asOf, tagline, children }: Props) {
+  const { user } = useAuth();
+  const items = navItems.filter((n) => !n.roles || (user && n.roles.includes(user.role)));
   return (
     <div className="flex min-h-screen flex-col bg-slate-100">
       {/* header navy */}
@@ -28,7 +30,7 @@ export default function AppShell({ title, eyebrow, asOf, tagline, children }: Pr
           </div>
           <div className="flex items-center gap-5">
             <nav className="hidden items-center gap-4 text-sm md:flex">
-              {navItems.map((n) => (
+              {items.map((n) => (
                 <NavLink
                   key={n.to}
                   to={n.to}
@@ -49,7 +51,7 @@ export default function AppShell({ title, eyebrow, asOf, tagline, children }: Pr
         </div>
         {/* mobile nav */}
         <nav className="flex gap-4 border-t border-white/10 px-5 py-2 text-sm md:hidden">
-          {navItems.map((n) => (
+          {items.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'font-medium text-white' : 'text-white/60')}>
               {n.label}
             </NavLink>

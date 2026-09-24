@@ -8,7 +8,9 @@ export async function attachUser(req, _res, next) {
     if (authProvider.mode === 'dev') {
       req.user = await authProvider.getUser();
     } else if (req.session?.userId) {
-      req.user = await prisma.appUser.findUnique({ where: { id: req.session.userId } });
+      const user = await prisma.appUser.findUnique({ where: { id: req.session.userId } });
+      // ถูกปิดใช้งาน → หลุดทันทีแม้ session ยังค้าง
+      if (user?.isActive) req.user = user;
     }
     next();
   } catch (err) {
