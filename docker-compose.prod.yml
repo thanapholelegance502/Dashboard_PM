@@ -85,6 +85,21 @@ services:
     depends_on:
       - web
 
+  # 🧪 บอร์ด QA — แอปจาก repo Dashboard_Tester (ทีม tester ดูแลเอง) · ดู docs/BOARD-INTEGRATION.md
+  # nginx (web) เช็กสิทธิ์บอร์ด QA ก่อนส่งต่อที่ /qa/ → ห้ามเปิด port ออก host (ต้องผ่าน nginx เท่านั้น)
+  # เปิดใช้: COMPOSE_PROFILES=caddy,qa (ใน .env) · ตั้งค่าแอปที่ ./qa.env (ดู qa.env.example)
+  qa:
+    image: ${QA_IMAGE:-ghcr.io/thanapholelegance502/dashboard_tester:latest}
+    restart: unless-stopped
+    profiles: ["qa"]
+    env_file: ./qa.env
+    expose:
+      - "5173"
+    volumes:
+      - qa_config:/app/config   # Lark token / ตั้งค่าของแอป QA — รอดตอน rebuild
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
   # 🔄 auto-deploy agent — poll GHCR แล้วเปลี่ยน container ที่ติด label ข้างบนเท่านั้น
   # (postgres ไม่ติด label → ไม่ยุ่ง · watchtower ไม่ update ตัวเอง)
   watchtower:
@@ -105,3 +120,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  qa_config:

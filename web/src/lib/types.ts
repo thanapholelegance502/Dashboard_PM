@@ -181,4 +181,14 @@ export interface AppUserRow {
   role: 'ADMIN' | 'PM' | 'VIEWER';
   isActive: boolean;
   linked: boolean; // login ด้วย Lark แล้วอย่างน้อย 1 ครั้ง
+  boards: string[]; // บอร์ดที่ติ๊กให้ (ADMIN เห็นทุกบอร์ดโดยไม่ดูค่านี้)
+}
+
+// ทะเบียนบอร์ดแผนก — มาจาก server/src/domain/boards.js ผ่าน /api/auth/me
+export interface BoardInfo {
+  code: string;
+  name: string;
+  desc: string;
+  path?: string;
+  kind: 'internal' | 'external' | 'soon'; // external = แอปทีมแผนกที่ nginx วางไว้ใต้ path (เปิดเต็มหน้า)
 }

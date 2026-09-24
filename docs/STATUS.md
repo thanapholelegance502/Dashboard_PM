@@ -1,6 +1,6 @@
 # STATUS — ทำอะไรไปแล้ว · กำลังทำ · จะทำ
 
-> อัพเดต 21 ก.ย. 2026
+> อัพเดต 24 ก.ย. 2026
 
 ---
 
@@ -34,13 +34,21 @@
 
 | # | เรื่อง | สถานะ |
 |---|---|---|
-| P0-4 | **Deploy cloud** | ✅ **deploy แล้ว** บน `203.150.48.37` (Ubuntu+Docker) — container ครบ, authorize+sync 561 ใบ, nginx 200 · 🔴 ติด provider เปิด port 80/443/22 external (portal ไม่มี firewall UI) |
-| P0-5 | **Auto-deploy (CI/CD)** | ✅ **code พร้อม** — merge main → GitHub Actions (test→build→push GHCR) → Watchtower บน server ดึงมา deploy เอง (pull-based, ไม่ต้อง SSH) · เหลือ **ตั้งค่าครั้งเดียวบน server** → ดู **[CICD.md](CICD.md)** |
-| P0-7 | **POC hosting ฟรี** | ✅ **code พร้อม** — Caddy ingress (profile) + DuckDNS + whitelist seed → รันบน Oracle Free VM, HTTPS+SSO จริง ไม่ใช้ domain บริษัท · เหลือสมัคร VM + setup → **[POC-DEPLOY.md](POC-DEPLOY.md)** |
-| P0-6 | **HTTPS staging (Cloudflare Tunnel)** | ✅ **code พร้อม** — cloudflared ใน compose (profile tunnel) สำหรับ staging + domain บริษัท → **[CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md)** · แผนย้าย: **[MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md)** |
-| P0-1 | **Lark SSO + HTTPS** | 🎯 เปิดใน POC ได้เลย — code พร้อม · ingress (caddy/tunnel) ปลดล็อก HTTPS+domain · เหลือ whitelist + ทดสอบ flow → **[NEXT-SSO.md](NEXT-SSO.md)** |
+| P0-7 | **POC บน Vultr** | ✅ **ขึ้นจริง** `https://elegancedb.duckdns.org` (Vultr + DuckDNS + Caddy) · Lark SSO + whitelist ใช้งานได้ · sync 566 ใบ (3 บอร์ด) · build image บนเครื่อง (ยังไม่ merge main) → **[POC-DEPLOY.md](POC-DEPLOY.md)** |
+| P0-1 | **Lark SSO + ผู้ใช้** | ✅ login ผ่าน · หน้า 🚫 สำหรับคนนอก whitelist · Admin แท็บ "ผู้ใช้" (เพิ่ม/role/ปิดใช้งาน + AuditLog) |
+| P0-8 | **Portal หลายแผนก** | ✅ **code พร้อม** — landing เลือกบอร์ด · สิทธิ์บอร์ดรายคน · บอร์ด QA (repo Dashboard_Tester) ที่ `/qa/` ผ่าน nginx เช็กสิทธิ์ · รอทีม tester ทำ checklist → **[BOARD-INTEGRATION.md](BOARD-INTEGRATION.md)** |
+| P0-5 | **Auto-deploy (CI/CD)** | ✅ code พร้อม — เหลือข้าว merge main + เปิด branch protection + `docker login ghcr.io` บน server แล้วเปิด watchtower → **[CICD.md](CICD.md)** |
+| P0-6 | **HTTPS staging (Cloudflare Tunnel)** | ✅ code พร้อม (ใช้ตอนย้ายเข้า domain บริษัท) → **[CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md)** · **[MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md)** |
+| P0-4 | ~~server `203.150.48.37`~~ | ❌ เลิกใช้ — provider เปิด port ผิด เครื่อง down → ย้ายมา Vultr (P0-7) |
 
-→ POC: [POC-DEPLOY.md](POC-DEPLOY.md) · migrate: [MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md) · auto-deploy: [CICD.md](CICD.md) · staging HTTPS: [CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
+### 🔒 ต้องทำก่อนเปิดให้ผู้บริหาร / ทีมใช้จริง (ข้าวสั่ง note ไว้ 24 ก.ย.)
+| # | เรื่อง | ทำไม |
+|---|---|---|
+| H-1 | **session เก็บใน Postgres** (แทน MemoryStore) | ตอนนี้ server restart / deploy ครั้งไหน ทุกคนหลุดต้อง login ใหม่ |
+| H-2 | **backup DB รายวัน** (`pg_dump` cron บน Vultr) — ต้องรวม database `qa` ของบอร์ด QA ด้วย | ตอนนี้ยังไม่มี backup เลย เครื่องพัง = ข้อมูล override/budget/ผู้ใช้หายหมด |
+| H-3 | **ปิด port บน Vultr** เหลือ 22/80/443 + SSH ใช้ key อย่างเดียว | ลดช่องโจมตีก่อนเปิด public |
+
+→ POC: [POC-DEPLOY.md](POC-DEPLOY.md) · บอร์ดแผนก: [BOARD-INTEGRATION.md](BOARD-INTEGRATION.md) · migrate: [MIGRATION-POC-TO-STAGING.md](MIGRATION-POC-TO-STAGING.md) · auto-deploy: [CICD.md](CICD.md) · staging HTTPS: [CLOUDFLARE-TUNNEL.md](CLOUDFLARE-TUNNEL.md) · SSO: [NEXT-SSO.md](NEXT-SSO.md)
 
 ---
 

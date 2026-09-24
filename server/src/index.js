@@ -2,7 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
-import { attachUser, requireAuth } from './api/middleware/auth.js';
+import { attachUser, requireAuth, requireBoard } from './api/middleware/auth.js';
 import { errorHandler } from './api/middleware/error.js';
 import { syncRouter } from './api/routes/sync.js';
 import { authRouter } from './api/routes/auth.js';
@@ -29,7 +29,9 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/sync', syncRouter);
   app.use('/api/meta', metaRouter);
-  app.use('/api/pm', requireAuth, pmRouter);
+  // บอร์ด: /api/pm/finance = C-level · ที่เหลือ = PM (กัน tester ที่มีแค่ QA ยิง API การเงินตรง ๆ)
+  const pmBoardGuard = (req, res, next) => requireBoard(req.path.startsWith('/finance') ? 'CLEVEL' : 'PM')(req, res, next);
+  app.use('/api/pm', requireAuth, pmBoardGuard, pmRouter);
   app.use('/api/admin', requireAuth, adminRouter);
 
   app.use(errorHandler);

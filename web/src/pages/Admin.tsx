@@ -368,7 +368,9 @@ function UsersTab() {
   const me = useAuth().user;
   const [users, setUsers] = useState<AppUserRow[]>([]);
   const [msg, setMsg] = useState('');
-  const [form, setForm] = useState<{ email: string; displayName: string; role: AppUserRow['role'] } | null>(null);
+  const [form, setForm] = useState<{ email: string; displayName: string; role: AppUserRow['role']; boards: string[] } | null>(null);
+  const boardOpts = (me?.boardCatalog ?? []).filter((b) => b.kind !== 'soon'); // ให้สิทธิ์ได้เฉพาะบอร์ดที่เปิดใช้
+  const toggle = (list: string[], code: string) => (list.includes(code) ? list.filter((c) => c !== code) : [...list, code]);
 
   const load = () => getUsers().then(setUsers).catch((e) => setMsg((e as Error).message));
   useEffect(() => { load(); }, []);
@@ -403,13 +405,26 @@ function UsersTab() {
               </select>
             </Field>
           </div>
+          {form.role !== 'ADMIN' && (
+            <div className="mt-3">
+              <div className={label}>บอร์ดที่เข้าได้</div>
+              <div className="mt-1 flex flex-wrap gap-4">
+                {boardOpts.map((b) => (
+                  <label key={b.code} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input type="checkbox" checked={form.boards.includes(b.code)} onChange={() => setForm({ ...form, boards: toggle(form.boards, b.code) })} />
+                    {b.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-3 flex gap-3">
             <button onClick={saveNew} className={btnPrimary}>บันทึก</button>
             <button onClick={() => setForm(null)} className={btnGhost}>ยกเลิก</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setForm({ email: '', displayName: '', role: 'VIEWER' })}
+        <button onClick={() => setForm({ email: '', displayName: '', role: 'VIEWER', boards: [] })}
           className="mb-4 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-900">
           + เพิ่มผู้ใช้
         </button>
@@ -419,7 +434,8 @@ function UsersTab() {
         <thead>
           <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
             <th className="pb-2 text-left font-medium">อีเมล</th><th className="pb-2 text-left font-medium">ชื่อ</th>
-            <th className="pb-2 text-left font-medium">สิทธิ์</th><th className="pb-2 text-left font-medium">Lark</th><th></th>
+            <th className="pb-2 text-left font-medium">สิทธิ์</th><th className="pb-2 text-left font-medium">บอร์ด</th>
+            <th className="pb-2 text-left font-medium">Lark</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -437,6 +453,21 @@ function UsersTab() {
                     onChange={(e) => run(() => patchUser(u.id, { role: e.target.value as AppUserRow['role'] }), `เปลี่ยน ${u.email} เป็น ${e.target.value}`)}>
                     {ROLES.map((r) => <option key={r}>{r}</option>)}
                   </select>
+                </td>
+                <td className="pr-2">
+                  {u.role === 'ADMIN' ? (
+                    <span className="text-xs text-slate-400">ทุกบอร์ด</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {boardOpts.map((b) => (
+                        <label key={b.code} className="flex items-center gap-1 text-xs text-slate-600">
+                          <input type="checkbox" checked={u.boards.includes(b.code)}
+                            onChange={() => run(() => patchUser(u.id, { boards: toggle(u.boards, b.code) }), `อัปเดตบอร์ดของ ${u.email}`)} />
+                          {b.code}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="pr-2 text-xs text-slate-400">{u.linked ? 'ผูกแล้ว' : 'ยังไม่เคย login'}</td>
                 <td className="text-right">

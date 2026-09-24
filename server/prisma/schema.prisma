@@ -176,6 +176,7 @@ model AppUser {
   displayName String
   role        String // ADMIN | PM | VIEWER
   isActive    Boolean @default(true)
+  boards      String[] @default([]) // บอร์ดที่เข้าได้ PM | QA | CLEVEL (ADMIN = ทุกบอร์ด) — domain/boards.js
 }
 
 model AuditLog {

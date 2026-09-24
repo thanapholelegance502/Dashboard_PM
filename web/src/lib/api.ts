@@ -1,6 +1,6 @@
 import type {
   Portfolio, Milestone, TrendResponse, AttentionItem, DrilldownResult,
-  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow,
+  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo,
 } from './types';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -38,7 +38,7 @@ export const getDrilldown = (code: string, f: { dept?: string; bucket?: string; 
   req<DrilldownResult>(`/pm/projects/${code}/tasks${qs(f)}`);
 
 // ── Auth ────────────────────────────────────────────
-export interface Me { id: number; email: string; displayName: string; role: string }
+export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[] }
 export const getMe = () => req<Me>(`/auth/me`);
 export const logout = () => req<{ ok: boolean }>(`/auth/logout`, { method: 'POST' });
 export const loginUrl = '/api/auth/login';
@@ -82,7 +82,7 @@ export const deleteInstallment = (id: number) =>
 
 // ── ผู้ใช้ (ADMIN เท่านั้น) ─────────────────────────
 export const getUsers = () => req<AppUserRow[]>(`/admin/users`);
-export const createUser = (data: { email: string; displayName?: string; role: AppUserRow['role'] }) =>
+export const createUser = (data: { email: string; displayName?: string; role: AppUserRow['role']; boards?: string[] }) =>
   req<AppUserRow>(`/admin/users`, { method: 'POST', body: JSON.stringify(data) });
-export const patchUser = (id: number, data: Partial<Pick<AppUserRow, 'role' | 'isActive' | 'displayName'>>) =>
+export const patchUser = (id: number, data: Partial<Pick<AppUserRow, 'role' | 'isActive' | 'displayName' | 'boards'>>) =>
   req<AppUserRow>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

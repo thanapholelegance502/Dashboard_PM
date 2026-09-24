@@ -8,6 +8,7 @@ import { PROJECT_STATUS } from '../../domain/enums.js';
 import { resolveSectionRule } from '../../domain/bucket.js';
 import { recomputeMetricsAndAttention } from '../../etl/postprocess.js';
 import { normalizeNewUser, assertUserChangeAllowed } from '../../domain/users.js';
+import { normalizeBoards } from '../../domain/boards.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireRole('ADMIN', 'PM')); // ทุก endpoint ต้อง ADMIN|PM
@@ -364,6 +365,7 @@ adminRouter.delete('/installments/:id', async (req, res, next) => {
 const adminOnly = requireRole('ADMIN');
 const userRow = (u) => ({
   id: u.id, email: u.email, displayName: u.displayName, role: u.role, isActive: u.isActive, linked: !!u.larkOpenId,
+  boards: u.boards ?? [],
 });
 
 adminRouter.get('/users', adminOnly, async (_req, res, next) => {
@@ -378,6 +380,7 @@ adminRouter.get('/users', adminOnly, async (_req, res, next) => {
 adminRouter.post('/users', adminOnly, async (req, res, next) => {
   try {
     const data = normalizeNewUser(req.body);
+    if (req.body.boards !== undefined) data.boards = normalizeBoards(req.body.boards);
     const created = await prisma.appUser.create({ data });
     await writeAudit({ appUserId: uid(req), entity: 'AppUser', entityId: created.id, action: 'CREATE', after: data });
     res.json(userRow(created));
@@ -396,6 +399,7 @@ adminRouter.patch('/users/:id', adminOnly, async (req, res, next) => {
     if (req.body.role !== undefined) data.role = String(req.body.role).toUpperCase();
     if (req.body.isActive !== undefined) data.isActive = Boolean(req.body.isActive);
     if (req.body.displayName !== undefined) data.displayName = String(req.body.displayName).trim() || before.displayName;
+    if (req.body.boards !== undefined) data.boards = normalizeBoards(req.body.boards);
     const activeAdminCount = await prisma.appUser.count({ where: { role: 'ADMIN', isActive: true } });
     assertUserChangeAllowed({ actorId: uid(req), target: before, change: data, activeAdminCount });
     const updated = await prisma.appUser.update({ where: { id }, data });

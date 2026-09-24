@@ -33,9 +33,10 @@ async function main() {
       const displayName = email.split('@')[0]; // แก้ชื่อจริงทีหลังในหน้า Admin
       await prisma.appUser.upsert({
         where: { email },
-        // update เฉพาะ role/isActive — ไม่ทับ larkOpenId/displayName ที่อาจถูกตั้งไปแล้ว
+        // update เฉพาะ role/isActive — ไม่ทับ larkOpenId/displayName/boards ที่อาจถูกตั้งไปแล้ว
         update: { role, isActive: true },
-        create: { email, displayName, role, isActive: true },
+        // สร้างใหม่: ADMIN เห็นทุกบอร์ดอยู่แล้ว · คนอื่นเริ่มที่ PM แล้วติ๊กเพิ่มในแท็บผู้ใช้
+        create: { email, displayName, role, isActive: true, boards: role === 'ADMIN' ? [] : ['PM'] },
       });
       n += 1;
     }
