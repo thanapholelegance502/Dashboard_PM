@@ -1,20 +1,42 @@
 import { useEffect, useState } from 'react';
 import { getFinance } from '../lib/api';
 import type { FinanceResult, ProjectStatus } from '../lib/types';
-import { money } from '../lib/format';
+import { money, moneyShort, fmtDate } from '../lib/format';
 import { statusColor, STATUS_LABEL } from '../lib/theme';
 import AppShell from '../components/AppShell';
+import KpiCard from '../components/KpiCard';
+import SectionCard, { EmptyState, ErrorBox } from '../components/SectionCard';
+
+const TITLE = 'Portfolio Financial — Executive';
+const EYEBROW = 'มูลค่างาน · การเก็บเงิน · กระแสเงินสด';
+const TAGLINE = 'Deliver Projects. Create Business Value.';
 
 export default function Finance() {
   const [data, setData] = useState<FinanceResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    getFinance().then(setData).catch((e) => setErr(e.message));
-  }, []);
+  const load = () => { setErr(null); getFinance().then(setData).catch((e) => setErr(e.message)); };
+  useEffect(load, []);
 
-  if (err) return <div className="p-8 text-red-600">โหลดไม่ได้: {err}</div>;
-  if (!data) return <div className="p-8 text-slate-400">กำลังโหลด…</div>;
+  if (err) {
+    return (
+      <AppShell title={TITLE} eyebrow={EYEBROW} tagline={TAGLINE}>
+        <div className="max-w-xl"><ErrorBox title={`โหลดไม่ได้: ${err}`} onRetry={load} /></div>
+      </AppShell>
+    );
+  }
+  if (!data) {
+    return (
+      <AppShell title={TITLE} eyebrow={EYEBROW} tagline={TAGLINE}>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="card flex flex-col gap-2.5 p-4"><div className="skeleton h-3 w-2/3" /><div className="skeleton h-8 w-1/2" /></div>
+          ))}
+        </div>
+        <p className="mt-3 text-sm text-ink-3">กำลังโหลด…</p>
+      </AppShell>
+    );
+  }
 
   const t = data.totals;
   const cf = data.cashflow;
@@ -28,127 +50,112 @@ export default function Finance() {
   const cfMax = Math.max(1, ...cfRows.map((r) => r.b.amount));
 
   return (
-    <AppShell title="Portfolio Financial — Executive" eyebrow="มูลค่างาน · การเก็บเงิน · กระแสเงินสด" tagline="Deliver Projects. Create Business Value.">
-      <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        {/* hero numbers — แถบเดียว คั่นด้วยเส้น */}
-        <section className="grid grid-cols-2 gap-y-6 border-b border-slate-200 py-7 md:grid-cols-4 md:divide-x md:divide-slate-200">
-          <Metric label="มูลค่างานรวม" value={money(t.budget)} />
-          <Metric label="เก็บเงินแล้ว" value={money(t.billed)} sub={t.burnPct != null ? `${t.burnPct}% ของมูลค่างาน` : undefined} accent="emerald" pad />
-          <Metric label="ค้างเก็บ" value={money(t.outstanding)} sub="ตั้งงวดแล้ว รอชำระ" accent="amber" pad />
-          <Metric label="ยังไม่ตั้งงวด" value={money(t.unplanned)} sub="มูลค่างาน − งวดที่ตั้ง" pad />
-        </section>
+    <AppShell title={TITLE} eyebrow={EYEBROW} asOf={fmtDate(data.asOf)} tagline={TAGLINE}>
+      {/* hero numbers */}
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard label="มูลค่างานรวม" value={moneyShort(t.budget)} title={money(t.budget)} tone="neutral" />
+        <KpiCard label="เก็บเงินแล้ว" value={moneyShort(t.billed)} title={money(t.billed)} sub={t.burnPct != null ? `${t.burnPct}% ของมูลค่างาน` : undefined} tone="info" />
+        <KpiCard label="ค้างเก็บ" value={moneyShort(t.outstanding)} title={money(t.outstanding)} sub="ตั้งงวดแล้ว รอชำระ" tone="atrisk" />
+        <KpiCard label="ยังไม่ตั้งงวด" value={moneyShort(t.unplanned)} title={money(t.unplanned)} sub="มูลค่างาน − งวดที่ตั้ง" tone="waiting" />
+      </div>
 
-        <div className="grid grid-cols-1 gap-10 py-8 lg:grid-cols-2">
-          {/* cash-flow */}
-          <section>
-            <SectionTitle>กระแสเงินสดที่จะเข้า</SectionTitle>
-            <div className="mt-4 space-y-3">
-              {cfRows.map((r) => (
-                <div key={r.label}>
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className={r.danger ? 'text-red-600' : 'text-slate-600'}>{r.label}</span>
-                    <span className="tabular-nums">
-                      <span className={`font-semibold ${r.danger ? 'text-red-600' : 'text-slate-900'}`}>{money(r.b.amount)}</span>
-                      <span className="ml-2 text-xs text-slate-400">{r.b.count} งวด</span>
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div className={`h-full rounded-full ${r.danger ? 'bg-red-500' : 'bg-slate-800'}`} style={{ width: `${(r.b.amount / cfMax) * 100}%` }} />
-                  </div>
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* cash-flow */}
+        <SectionCard title="กระแสเงินสดที่จะเข้า">
+          <div className="flex flex-col gap-3.5">
+            {cfRows.map((r) => (
+              <div key={r.label}>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className={r.danger && r.b.amount > 0 ? 'font-medium text-late' : 'text-ink-2'}>{r.label}</span>
+                  <span className="tabular-nums" title={money(r.b.amount)}>
+                    <span className={`font-semibold ${r.danger && r.b.amount > 0 ? 'text-late' : 'text-ink'}`}>{money(r.b.amount)}</span>
+                    <span className="ml-2 text-xs text-ink-3">{r.b.count} งวด</span>
+                  </span>
                 </div>
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-2">
+                  <div className={`h-full rounded-full ${r.danger ? 'bg-late' : 'bg-brand-700'}`} style={{ width: `${(r.b.amount / cfMax) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        {/* revenue at risk + overdue */}
+        <SectionCard title="เงินที่เสี่ยง / ต้องตามเก็บ" flush>
+          <div className="border-b border-hair px-[18px] py-4">
+            <div className="text-[13px] text-ink-2">Revenue at risk · งวดผูกกับโครงการที่ล่าช้า</div>
+            <div
+              className={`mt-1 text-[32px] font-semibold leading-tight tracking-tight tabular-nums ${data.revenueAtRisk.amount > 0 ? 'text-late' : 'text-ink'}`}
+              title={money(data.revenueAtRisk.amount)}
+            >
+              {moneyShort(data.revenueAtRisk.amount)}
+            </div>
+            <div className="text-xs text-ink-3">{data.revenueAtRisk.items.length} งวด</div>
+          </div>
+          <div className="px-[18px] pb-1 pt-3 text-xs font-medium text-ink-3">งวดเลยกำหนดชำระ</div>
+          {data.overdueInstallments.length === 0 ? (
+            <EmptyState text="ไม่มีงวดค้างเก็บ" />
+          ) : (
+            <ul>
+              {data.overdueInstallments.map((i, idx) => (
+                <li key={idx} className="flex items-center justify-between gap-3 border-b border-hair-2 px-[18px] py-2.5 text-sm last:border-b-0">
+                  <span className="min-w-0">
+                    <span className="code text-ink-3">{i.code}</span> · {i.name}
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    <span className="font-medium">{money(i.amount)}</span>
+                    <span className="ml-2 text-xs font-semibold text-late">เลย {i.overdueDays} วัน</span>
+                  </span>
+                </li>
               ))}
-            </div>
-          </section>
+            </ul>
+          )}
+        </SectionCard>
+      </div>
 
-          {/* revenue at risk + overdue */}
-          <section>
-            <SectionTitle>เงินที่เสี่ยง / ต้องตามเก็บ</SectionTitle>
-            <div className="mt-4">
-              <div className="text-xs text-slate-500">Revenue at risk · งวดผูกกับโครงการที่ล่าช้า</div>
-              <div className="mt-0.5 text-3xl font-semibold tabular-nums text-red-600">{money(data.revenueAtRisk.amount)}</div>
-              <div className="text-xs text-slate-400">{data.revenueAtRisk.items.length} งวด</div>
-            </div>
-            <div className="mt-5">
-              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">งวดเลยกำหนดชำระ</div>
-              {data.overdueInstallments.length === 0 ? (
-                <p className="text-sm text-slate-400">ไม่มีงวดค้างเก็บ</p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {data.overdueInstallments.map((i, idx) => (
-                    <li key={idx} className="flex items-center justify-between py-2 text-sm">
-                      <span>
-                        <span className="text-slate-400">{i.code}</span> · {i.name}
-                      </span>
-                      <span className="tabular-nums">
-                        <span className="font-medium text-slate-900">{money(i.amount)}</span>
-                        <span className="ml-2 text-xs text-red-600">เลย {i.overdueDays} วัน</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* table */}
-        <section className="border-t border-slate-200 pt-8">
-          <SectionTitle>การเงินรายโครงการ</SectionTitle>
-          <table className="mt-4 w-full text-sm">
+      {/* table */}
+      <SectionCard title="การเงินรายโครงการ" flush>
+        <div className="overflow-x-auto px-[6px] pb-2">
+          <table className="tbl min-w-[640px]">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
-                <th className="pb-2 text-left font-medium">โครงการ</th>
-                <th className="pb-2 text-left font-medium">สถานะ</th>
-                <th className="pb-2 text-right font-medium">มูลค่างาน</th>
-                <th className="pb-2 text-right font-medium">เก็บแล้ว</th>
-                <th className="pb-2 text-right font-medium">ค้างเก็บ</th>
-                <th className="pb-2 text-right font-medium">burn</th>
+              <tr>
+                <th>โครงการ</th>
+                <th>สถานะ</th>
+                <th className="!text-right">มูลค่างาน</th>
+                <th className="!text-right">เก็บแล้ว</th>
+                <th className="!text-right">ค้างเก็บ</th>
+                <th className="!text-right">burn</th>
               </tr>
             </thead>
             <tbody>
               {data.projects.map((p) => (
-                <tr key={p.code} className="border-b border-slate-100">
-                  <td className="py-2.5 font-medium text-slate-900">{p.displayName}</td>
-                  <td className="py-2.5"><StatusDot status={p.status} /></td>
-                  <td className="py-2.5 text-right tabular-nums text-slate-700">{money(p.budget)}</td>
-                  <td className="py-2.5 text-right tabular-nums text-emerald-600">{money(p.billed)}</td>
-                  <td className="py-2.5 text-right tabular-nums text-slate-900">{money(p.outstanding)}</td>
-                  <td className="py-2.5 text-right tabular-nums text-slate-400">{p.burnPct != null ? `${p.burnPct}%` : '—'}</td>
+                <tr key={p.code}>
+                  <td className="font-medium">{p.displayName}</td>
+                  <td><StatusDot status={p.status} /></td>
+                  <td className="text-right tabular-nums text-ink-2">{money(p.budget)}</td>
+                  <td className="text-right tabular-nums text-ok">{money(p.billed)}</td>
+                  <td className="text-right tabular-nums">{money(p.outstanding)}</td>
+                  <td className="text-right tabular-nums text-ink-3">{p.burnPct != null ? `${p.burnPct}%` : '—'}</td>
                 </tr>
               ))}
-              <tr className="text-sm font-semibold">
-                <td className="pt-3" colSpan={2}>รวมทั้งหมด</td>
-                <td className="pt-3 text-right tabular-nums text-slate-900">{money(t.budget)}</td>
-                <td className="pt-3 text-right tabular-nums text-emerald-600">{money(t.billed)}</td>
-                <td className="pt-3 text-right tabular-nums text-slate-900">{money(t.outstanding)}</td>
-                <td className="pt-3 text-right tabular-nums text-slate-500">{t.burnPct != null ? `${t.burnPct}%` : '—'}</td>
+              <tr className="font-semibold">
+                <td className="!border-b-0 !border-t-2 !border-t-line" colSpan={2}>รวมทั้งหมด</td>
+                <td className="!border-b-0 !border-t-2 !border-t-line text-right tabular-nums">{money(t.budget)}</td>
+                <td className="!border-b-0 !border-t-2 !border-t-line text-right tabular-nums text-ok">{money(t.billed)}</td>
+                <td className="!border-b-0 !border-t-2 !border-t-line text-right tabular-nums">{money(t.outstanding)}</td>
+                <td className="!border-b-0 !border-t-2 !border-t-line text-right tabular-nums text-ink-2">{t.burnPct != null ? `${t.burnPct}%` : '—'}</td>
               </tr>
             </tbody>
           </table>
-        </section>
-      </div>
+        </div>
+      </SectionCard>
     </AppShell>
   );
 }
 
-function Metric({ label, value, sub, accent, pad }: { label: string; value: string; sub?: string; accent?: 'emerald' | 'amber'; pad?: boolean }) {
-  const color = accent === 'emerald' ? 'text-emerald-600' : accent === 'amber' ? 'text-amber-600' : 'text-slate-900';
-  return (
-    <div className={pad ? 'md:pl-6' : ''}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">{label}</div>
-      <div className={`mt-1.5 text-2xl font-semibold tabular-nums md:text-[26px] ${color}`}>{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-slate-400">{sub}</div>}
-    </div>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{children}</h2>;
-}
-
 function StatusDot({ status }: { status: ProjectStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+    <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: statusColor(status) }} />
       {STATUS_LABEL[status]}
     </span>

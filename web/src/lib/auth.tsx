@@ -34,7 +34,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   };
   useEffect(load, []);
 
-  if (state === 'loading') return <div className="p-10 text-center text-slate-400">กำลังโหลด…</div>;
+  if (state === 'loading') return <div className="flex min-h-screen items-center justify-center bg-canvas text-sm text-ink-3">กำลังโหลด…</div>;
   if (state === 'unauth') return <Login />;
   if (state === 'forbidden') return <Login forbidden />;
   return <Ctx.Provider value={{ user, reload: load }}>{children}</Ctx.Provider>;

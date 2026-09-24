@@ -4,14 +4,18 @@ import type { Portfolio, Milestone, AttentionItem, TrendResponse, ProjectStatus 
 import { fmtDateTime, fmtDate, isStale } from '../lib/format';
 import { statusColor, STATUS_LABEL } from '../lib/theme';
 import AppShell from '../components/AppShell';
-import SectionCard from '../components/SectionCard';
+import SectionCard, { EmptyState, SkeletonRows, ErrorBox } from '../components/SectionCard';
 import KpiCard from '../components/KpiCard';
 import GanttTimeline from '../components/GanttTimeline';
 import DonutChart from '../components/DonutChart';
 import TrendLine from '../components/TrendLine';
 import FilterBar, { type Filters } from '../components/FilterBar';
 import DrillDownPanel from '../components/DrillDownPanel';
-import { IconLayers, IconCalendar, IconRocket, IconCheck, IconWarn, IconAlert, IconChart, IconFlag } from '../components/Icons';
+
+const TITLE = 'Project Portfolio — Executive Summary';
+const EYEBROW = 'UAT · Go-Live · Timeline · Status';
+const TAGLINE = 'Deliver Projects. Create Business Value.';
+const DAY = 86400000;
 
 export default function PM() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
@@ -26,7 +30,7 @@ export default function PM() {
 
   const loadPortfolio = () =>
     getPortfolio({ status: filters.status || undefined, projectCode: filters.projectCode || undefined, asOf: asOf || undefined })
-      .then(setPortfolio)
+      .then((p) => { setPortfolio(p); setErr(null); })
       .catch((e) => setErr(e.message));
 
   useEffect(() => { loadPortfolio(); }, [filters.status, filters.projectCode, asOf]);
@@ -45,81 +49,119 @@ export default function PM() {
       .map((s) => ({ name: STATUS_LABEL[s], value: by[s], color: statusColor(s), onClick: () => setFilters((f) => ({ ...f, status: s })) }));
   }, [portfolio]);
 
+  // เรียงตามวันที่ต้องได้คำตอบ (ไม่มีวัน = ท้ายสุด)
+  const attentionSorted = useMemo(
+    () => [...attention].sort((a, b) => (a.neededBy ?? '9999').localeCompare(b.neededBy ?? '9999')),
+    [attention],
+  );
+
   const doSync = async () => {
     setSyncing(true);
     try { await runSyncNow(); await loadPortfolio(); } catch (e) { setErr((e as Error).message); } finally { setSyncing(false); }
   };
 
-  if (err && !portfolio) return <div className="p-8 text-red-600">โหลดข้อมูลไม่ได้: {err} — backend รันอยู่ไหม (:3000)</div>;
-  if (!portfolio) return <div className="p-8 text-slate-400">กำลังโหลด…</div>;
+  const syncBtn = (
+    <button onClick={doSync} disabled={syncing} className="btn-primary no-print">
+      {syncing ? 'กำลัง Sync…' : 'Sync now'}
+    </button>
+  );
+  const printBtn = <button onClick={() => window.print()} className="btn-secondary no-print">พิมพ์</button>;
+
+  if (err && !portfolio) {
+    return (
+      <AppShell title={TITLE} eyebrow={EYEBROW} tagline={TAGLINE}>
+        <div className="max-w-xl">
+          <ErrorBox title={`โหลดข้อมูลไม่ได้: ${err} — backend รันอยู่ไหม (:3000)`} onRetry={loadPortfolio} />
+        </div>
+      </AppShell>
+    );
+  }
+  if (!portfolio) {
+    return (
+      <AppShell title={TITLE} eyebrow={EYEBROW} tagline={TAGLINE}>
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="card flex flex-col gap-2.5 p-4"><div className="skeleton h-3 w-2/3" /><div className="skeleton h-8 w-1/3" /></div>
+          ))}
+        </div>
+        <SectionCard title="CEO Attention Required"><SkeletonRows /></SectionCard>
+        <p className="mt-3 text-sm text-ink-3">กำลังโหลด…</p>
+      </AppShell>
+    );
+  }
 
   const k = portfolio.kpis;
   const pctOf = (n: number) => (k.total ? `${Math.round((n / k.total) * 100)}%` : '');
   const stale = isStale(portfolio.lastSyncAt);
   const codes = portfolio.projects.slice(0, 5).map((p) => p.code);
+  const openDrill = (code: string) => setDrill({ code, title: 'การ์ดทั้งหมด' });
 
   return (
     <AppShell
-      title="Project Portfolio — Executive Summary"
-      eyebrow="UAT · Go-Live · Timeline · Status"
+      title={TITLE}
+      eyebrow={EYEBROW}
       asOf={fmtDateTime(portfolio.lastSyncAt)}
-      tagline="Deliver Projects. Create Business Value."
+      stale={stale}
+      tagline={TAGLINE}
+      actions={<>{printBtn}{syncBtn}</>}
     >
       {/* toolbar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="card no-print mb-5 flex flex-wrap items-center justify-between gap-3 px-3.5 py-3">
         <FilterBar projects={portfolio.projects} filters={filters} onChange={setFilters} />
-        <div className="flex items-center gap-3 text-xs">
-          <label className="flex items-center gap-1 text-slate-500">
-            ย้อนหลัง:
-            <input type="date" value={asOf} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setAsOf(e.target.value)}
-              className="rounded border border-slate-300 px-2 py-1 text-slate-800" />
-            {asOf && <button onClick={() => setAsOf('')} className="text-doing hover:underline">ปัจจุบัน</button>}
-          </label>
-          {stale && <span className="rounded bg-red-600 px-2 py-1 text-white">ข้อมูลเก่ากว่า 24 ชม.</span>}
-          <button onClick={doSync} disabled={syncing} className="rounded bg-doing px-3 py-1.5 font-medium text-white disabled:opacity-50">
-            {syncing ? 'กำลัง Sync…' : 'Sync now'}
-          </button>
-        </div>
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          ย้อนหลัง:
+          <input type="date" value={asOf} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setAsOf(e.target.value)}
+            className="field-input py-1" />
+          {asOf && <button onClick={() => setAsOf('')} className="btn-ghost btn-sm">ปัจจุบัน</button>}
+        </label>
       </div>
 
       {asOf && (
-        <div className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm ring-1 ring-amber-100">
+        <div className="mb-5 rounded-lg border border-risk-bd bg-risk-bg px-3.5 py-2.5 text-sm text-[#5C4A1A]">
           {portfolio.asOfHasData
             ? <>ดูข้อมูลย้อนหลัง ณ <b>{fmtDate(asOf)}</b> (snapshot {fmtDate(portfolio.asOfSnapshot ?? null)}) · overdue ไม่มีในข้อมูลย้อนหลัง</>
             : <><b>ยังไม่มี snapshot ก่อน {fmtDate(asOf)}</b> — ระบบเก็บ snapshot วันละครั้ง (17:00) เริ่มสะสมแล้ว</>}
         </div>
       )}
 
-      {/* KPI 6 */}
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <KpiCard label="โครงการทั้งหมด" value={k.total} tone="info" icon={<IconLayers />} onClick={() => setFilters((f) => ({ ...f, status: '' }))} />
-        <KpiCard label="UAT เดือนนี้" value={k.uatThisMonth} tone="info" icon={<IconCalendar />} />
-        <KpiCard label="Go-Live เดือนนี้" value={k.goliveThisMonth} tone="info" icon={<IconRocket />} />
-        <KpiCard label="On Track" value={k.onTrack} sub={pctOf(k.onTrack)} tone="ontrack" icon={<IconCheck />} onClick={() => setFilters((f) => ({ ...f, status: 'ON_TRACK' }))} />
-        <KpiCard label="At Risk" value={k.atRisk} sub={pctOf(k.atRisk)} tone="atrisk" icon={<IconWarn />} onClick={() => setFilters((f) => ({ ...f, status: 'AT_RISK' }))} />
-        <KpiCard label="Delayed" value={k.delayed} sub={pctOf(k.delayed)} tone="delayed" icon={<IconAlert />} onClick={() => setFilters((f) => ({ ...f, status: 'DELAYED' }))} />
+      {/* KPI */}
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+        <KpiCard label="โครงการทั้งหมด" value={k.total} tone="neutral" onClick={() => setFilters((f) => ({ ...f, status: '' }))} />
+        <KpiCard label="UAT เดือนนี้" value={k.uatThisMonth} tone="info" sub="Milestones ที่จะถึง ↓" />
+        <KpiCard label="Go-Live เดือนนี้" value={k.goliveThisMonth} tone="info" sub="Milestones ที่จะถึง ↓" />
+        <KpiCard label="On Track" value={k.onTrack} sub={pctOf(k.onTrack)} tone="ontrack" onClick={() => setFilters((f) => ({ ...f, status: 'ON_TRACK' }))} />
+        <KpiCard label="At Risk" value={k.atRisk} sub={pctOf(k.atRisk)} tone="atrisk" onClick={() => setFilters((f) => ({ ...f, status: 'AT_RISK' }))} />
+        <KpiCard label="Delayed" value={k.delayed} sub={pctOf(k.delayed)} tone="delayed" problem={k.delayed > 0} onClick={() => setFilters((f) => ({ ...f, status: 'DELAYED' }))} />
+        <KpiCard label="Waiting" value={k.waiting} sub={k.waiting ? `${pctOf(k.waiting)} · รอเริ่ม` : 'รอเริ่ม'} tone="waiting" onClick={() => setFilters((f) => ({ ...f, status: 'WAITING' }))} />
       </div>
 
-      {/* Gantt */}
-      <div className="mb-5">
-        <SectionCard title="Project Timeline (Target vs Actual)" icon={<IconChart />} className="!p-0">
-          <GanttTimeline projects={portfolio.projects} onProjectClick={(code) => setDrill({ code, title: 'การ์ดทั้งหมด' })} />
-        </SectionCard>
-      </div>
-
-      {/* 3 columns */}
-      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="Milestones ที่จะถึง" icon={<IconCalendar />}>
-          {milestones.length === 0 ? (
-            <Empty text="ยังไม่มี UAT / Go-Live ข้างหน้า" />
+      {/* CEO Attention | Milestones + Status */}
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <SectionCard title="CEO Attention Required" count={attention.length} countTone="alert" right="เรียงตามวันที่ต้องได้คำตอบ" flush>
+          {attentionSorted.length === 0 ? (
+            <EmptyState text="ไม่มีเรื่องค้างตัดสินใจ" />
           ) : (
-            <ul className="space-y-2 text-sm">
-              {milestones.map((m, i) => {
-                const cls = m.inDays <= 7 ? 'font-semibold text-delayed' : m.inDays <= 14 ? 'font-medium text-atrisk' : 'text-slate-500';
+            <ul>
+              {attentionSorted.map((a) => {
+                const soon = a.neededBy ? new Date(a.neededBy).getTime() - Date.now() < 3 * DAY : false;
                 return (
-                  <li key={i} className="flex items-center justify-between border-b border-slate-50 pb-1.5 last:border-0">
-                    <span><b>{m.displayName}</b> · {m.type === 'UAT' ? 'UAT' : 'Go-Live'}</span>
-                    <span className={cls}>{fmtDate(m.date)} ({m.inDays} วัน)</span>
+                  <li key={a.id} className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-3 gap-y-1 border-b border-hair-2 px-[18px] py-3 last:border-b-0 hover:bg-[#FAF9F6] sm:grid-cols-[72px_minmax(0,1fr)_104px_72px] sm:items-center">
+                    <span className="code pt-0.5 sm:pt-0">{a.project.projectCode}</span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm font-medium">{a.title}</span>
+                      {a.impactText && <span className="text-xs text-late">{a.impactText}</span>}
+                      <span className="flex items-center gap-1.5 text-xs text-ink-3">
+                        <span className="rounded bg-surface-2 px-1.5 py-px text-[10px] font-semibold tracking-wide text-ink-2">{a.source}</span>
+                        {a.issueType}
+                      </span>
+                    </div>
+                    <div className="col-start-2 flex gap-1.5 text-xs sm:col-start-auto sm:flex-col sm:gap-0.5">
+                      <span className="text-ink-3">ต้องการภายใน</span>
+                      <span className={`font-semibold tabular-nums ${soon ? 'text-late' : 'text-ink'}`}>{fmtDate(a.neededBy)}</span>
+                    </div>
+                    <button onClick={() => openDrill(a.project.projectCode)} className="col-start-2 justify-self-start text-[13px] font-medium text-brand-700 hover:underline sm:col-start-auto sm:justify-self-end">
+                      ดูการ์ด →
+                    </button>
                   </li>
                 );
               })}
@@ -127,39 +169,50 @@ export default function PM() {
           )}
         </SectionCard>
 
-        <SectionCard title="Projects by Status" icon={<IconFlag />}>
-          <DonutChart data={donutData} centerLabel="โครงการ" />
-          <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500">
-            <Legend color={statusColor('ON_TRACK')} text="On Track — ตามแผน" />
-            <Legend color={statusColor('AT_RISK')} text="At Risk — เสี่ยง (blocker/overdue/ใกล้ครบ<80%)" />
-            <Legend color={statusColor('DELAYED')} text="Delayed — เลยกำหนด target Go-Live" />
-            <Legend color={statusColor('WAITING')} text="Waiting — รอเริ่ม (PM ตั้ง)" />
-          </div>
-        </SectionCard>
+        <div className="flex min-w-0 flex-col gap-5">
+          <SectionCard title="Milestones ที่จะถึง" flush>
+            {milestones.length === 0 ? (
+              <EmptyState text="ยังไม่มี UAT / Go-Live ข้างหน้า" tone="muted" />
+            ) : (
+              <ul>
+                {milestones.map((m, i) => {
+                  const cls = m.inDays <= 7 ? 'font-semibold text-late' : m.inDays <= 14 ? 'font-medium text-risk' : 'text-ink-2';
+                  return (
+                    <li key={i} className="flex items-center justify-between gap-3 border-b border-hair-2 px-[18px] py-2.5 text-sm last:border-b-0">
+                      <span className="min-w-0 truncate"><b className="font-semibold">{m.displayName}</b> <span className="text-ink-3">·</span> {m.type === 'UAT' ? 'UAT' : 'Go-Live'}</span>
+                      <span className={`shrink-0 tabular-nums ${cls}`}>{fmtDate(m.date)} ({m.inDays} วัน)</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
 
-        <SectionCard title="CEO Attention Required" icon={<IconAlert />} tone="alert">
-          {attention.length === 0 ? (
-            <Empty text="ไม่มีเรื่องค้างตัดสินใจ" />
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {attention.map((a) => (
-                <li key={a.id} className="rounded-lg bg-white/70 px-2.5 py-2 ring-1 ring-red-100">
-                  <div className="flex items-center justify-between">
-                    <b className="text-xs text-slate-600">{a.project.projectCode}</b>
-                    <span className="rounded bg-slate-100 px-1.5 text-[10px] text-slate-500">{a.source}</span>
-                  </div>
-                  <div className="text-slate-800">{a.title}</div>
-                  <div className="text-xs text-delayed">{a.impactText}</div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <SectionCard title="Projects by Status">
+            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+              <DonutChart data={donutData} centerLabel="โครงการ" />
+              <div className="flex w-full min-w-0 flex-col gap-1.5 text-[13px]">
+                <Legend status="ON_TRACK" text="On Track — ตามแผน" n={donutCount(donutData, 'ON_TRACK')} />
+                <Legend status="AT_RISK" text="At Risk — เสี่ยง (blocker/overdue/ใกล้ครบ<80%)" n={donutCount(donutData, 'AT_RISK')} />
+                <Legend status="DELAYED" text="Delayed — เลยกำหนด target Go-Live" n={donutCount(donutData, 'DELAYED')} />
+                <Legend status="WAITING" text="Waiting — รอเริ่ม (PM ตั้ง)" n={donutCount(donutData, 'WAITING')} />
+                <Legend status="DONE" text="Done" n={donutCount(donutData, 'DONE')} />
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+
+      {/* Gantt */}
+      <div className="mb-5">
+        <SectionCard title="Project Timeline (Target vs Actual)" flush>
+          <GanttTimeline projects={portfolio.projects} onProjectClick={openDrill} />
         </SectionCard>
       </div>
 
       {/* Trend */}
-      <SectionCard title="ความคืบหน้าย้อนหลัง" icon={<IconChart />}>
-        {trend && <TrendLine series={trend.series} codes={codes} weeksCollected={trend.weeksCollected} needForFull={trend.needForFullTrend} />}
+      <SectionCard title="ความคืบหน้าย้อนหลัง" right={trend && trend.weeksCollected >= trend.needForFullTrend ? `% progress · ${trend.needForFullTrend} สัปดาห์ · 5 โครงการแรก` : undefined}>
+        {trend ? <TrendLine series={trend.series} codes={codes} weeksCollected={trend.weeksCollected} needForFull={trend.needForFullTrend} /> : <SkeletonRows />}
       </SectionCard>
 
       <DrillDownPanel open={!!drill} code={drill?.code ?? null} title={drill?.title ?? ''} filter={{}} onClose={() => setDrill(null)} />
@@ -167,14 +220,16 @@ export default function PM() {
   );
 }
 
-function Empty({ text }: { text: string }) {
-  return <div className="py-6 text-center text-sm text-slate-400">{text}</div>;
+function donutCount(data: { name: string; value: number }[], s: ProjectStatus) {
+  return data.find((d) => d.name === STATUS_LABEL[s])?.value ?? 0;
 }
-function Legend({ color, text }: { color: string; text: string }) {
+
+function Legend({ status, text, n }: { status: ProjectStatus; text: string; n: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-      {text}
+    <span className="flex items-center gap-2">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: statusColor(status) }} />
+      <span className="min-w-0 text-ink-2">{text}</span>
+      <span className="ml-auto font-semibold tabular-nums">{n}</span>
     </span>
   );
 }

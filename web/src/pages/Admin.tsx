@@ -10,6 +10,8 @@ import {
 import type { AdminProject, UnmappedSection, SectionRule, BudgetResult, AppUserRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
 import { money, fmtDate } from '../lib/format';
+import { STATUS_LABEL } from '../lib/theme';
+import Dialog, { ConfirmDialog, Toast } from '../components/Dialog';
 
 const DATE_FIELDS: (keyof AdminProject)[] = [
   'startDate', 'targetUat', 'actualUat', 'targetGolive', 'actualGolive',
@@ -20,28 +22,28 @@ const DATE_LABEL: Record<string, string> = {
 };
 
 // ── shared styles ──────────────────────────────────
-const input = 'rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-slate-900 focus:outline-none';
-const btnPrimary = 'rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700';
-const btnGhost = 'text-sm text-slate-500 hover:text-slate-900';
-const label = 'text-[11px] font-medium uppercase tracking-wider text-slate-400';
+const input = 'field-input';
+const btnPrimary = 'btn-primary';
+const btnGhost = 'btn-ghost';
+const btnAdd = 'btn-secondary mb-4';
+const label = 'field-label';
+const formBox = 'card mb-5 p-5';
 
 export default function Admin() {
   const [tab, setTab] = useState<'projects' | 'rules' | 'users'>('projects');
   const isAdmin = useAuth().user?.role === 'ADMIN'; // จัดการผู้ใช้ = ADMIN เท่านั้น
   return (
     <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules · Users">
-      {isAdmin && <LarkConnectCard />}
-      <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <nav className="flex gap-6 border-b border-slate-200 text-sm">
+      <div className="max-w-5xl">
+        {isAdmin && <LarkConnectCard />}
+        <nav className="seg mb-5 max-w-full overflow-x-auto">
           <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')}>โครงการ · Milestone</TabBtn>
           <TabBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Section Rules</TabBtn>
           {isAdmin && <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>ผู้ใช้</TabBtn>}
         </nav>
-        <div className="py-6">
-          {tab === 'projects' && <ProjectsTab />}
-          {tab === 'rules' && <RulesTab />}
-          {tab === 'users' && isAdmin && <UsersTab />}
-        </div>
+        {tab === 'projects' && <ProjectsTab />}
+        {tab === 'rules' && <RulesTab />}
+        {tab === 'users' && isAdmin && <UsersTab />}
       </div>
     </AppShell>
   );
@@ -49,10 +51,7 @@ export default function Admin() {
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`-mb-px border-b-2 pb-2.5 font-medium ${active ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-    >
+    <button onClick={onClick} className={`seg-opt shrink-0 px-4 py-1.5 ${active ? 'seg-opt-on' : ''}`}>
       {children}
     </button>
   );
@@ -61,8 +60,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 // ══ Lark connection (token ETL) ═════════════════════
 // ปุ่มพาไป Lark → callback กลับมา /admin?lark=connected|failed (server/src/api/routes/auth.js)
 const LARK_RESULT: Record<string, { text: string; cls: string }> = {
-  connected: { text: 'เชื่อม Lark สำเร็จ — กด Sync now ที่ Dashboard เพื่อดึงข้อมูลรอบใหม่', cls: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
-  failed: { text: 'เชื่อม Lark ไม่สำเร็จ — ลองกดใหม่อีกครั้ง (ถ้ายังไม่ได้ ดู server log)', cls: 'bg-rose-50 text-rose-800 ring-rose-200' },
+  connected: { text: 'เชื่อม Lark สำเร็จ — กด Sync now ที่ Dashboard เพื่อดึงข้อมูลรอบใหม่', cls: 'border-ok-bd bg-ok-bg text-ok' },
+  failed: { text: 'เชื่อม Lark ไม่สำเร็จ — ลองกดใหม่อีกครั้ง (ถ้ายังไม่ได้ ดู server log)', cls: 'border-late-bd bg-late-bg text-late' },
 };
 
 function LarkConnectCard() {
@@ -78,26 +77,24 @@ function LarkConnectCard() {
   const banner = LARK_RESULT[result];
   const showWarn = needReauth && result !== 'connected';
   return (
-    <div className="mx-auto mb-4 max-w-5xl space-y-3">
-      {banner && <div className={`rounded-md px-3 py-2 text-sm ring-1 ${banner.cls}`}>{banner.text}</div>}
-      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 shadow-sm ring-1 ${showWarn ? 'bg-amber-50 ring-amber-200' : 'bg-white ring-slate-200'}`}>
-        <div className="text-sm">
-          <div className="font-semibold text-slate-900">การเชื่อมต่อ Lark (token ETL)</div>
-          <div className={showWarn ? 'text-amber-800' : 'text-slate-500'}>
+    <div className="mb-5 space-y-3">
+      {banner && <div className={`rounded-lg border px-3.5 py-2.5 text-sm font-medium ${banner.cls}`}>{banner.text}</div>}
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 shadow-card ${showWarn ? 'border-risk-bd bg-risk-bg' : 'border-line bg-surface'}`}>
+        <div className="flex items-start gap-3 text-sm">
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${showWarn ? 'bg-risk-dot' : 'bg-ok'}`} />
+          <div>
+          <div className="font-semibold">การเชื่อมต่อ Lark (token ETL)</div>
+          <div className={showWarn ? 'text-risk' : 'text-ink-2'}>
             {showWarn
               ? '⚠️ token หมดอายุ — sync ดึงข้อมูลไม่ได้ ต้องเชื่อม Lark ใหม่'
               : 'ใช้เมื่อ sync แจ้งว่าต้อง authorize ใหม่ · login Lark ด้วยบัญชีที่เห็นทุกบอร์ด'}
           </div>
+          </div>
         </div>
-        <a href={larkAuthorizeUrl} className={btnPrimary}>เชื่อม Lark ใหม่</a>
+        <a href={larkAuthorizeUrl} className={`${btnPrimary} hover:text-white`}>เชื่อม Lark ใหม่</a>
       </div>
     </div>
   );
-}
-
-function Toast({ msg }: { msg: string }) {
-  if (!msg) return null;
-  return <div className="mb-5 rounded-md bg-slate-900 px-3 py-2 text-sm text-white">{msg}</div>;
 }
 
 // ══ Projects ═══════════════════════════════════════
@@ -136,26 +133,26 @@ function ProjectsTab() {
     const r = await testConnection(code);
     setMsg(r.ok ? `${code}: อ่านได้ ${r.cards} การ์ด / ${r.sections} section` : `${code}: ${r.error}`);
   };
-  const doStatusOverride = async (code: string) => {
-    const status = prompt('สถานะ (ON_TRACK/AT_RISK/DELAYED/DONE/WAITING — WAITING = รอเริ่ม):'); if (!status) return;
-    const reason = prompt('เหตุผล (≥10 ตัวอักษร):') ?? '';
-    try { await statusOverride(code, status, reason); setMsg(`override สถานะ ${code}`); load(); }
-    catch (e) { setMsg((e as Error).message); }
-  };
-  const doProgressOverride = async (code: string) => {
-    const v = prompt('progress % (0-100):'); if (!v) return;
-    const reason = prompt('เหตุผล (≥10 ตัวอักษร):') ?? '';
-    try { await progressOverride(code, Number(v), reason); setMsg(`override progress ${code}`); load(); }
-    catch (e) { setMsg((e as Error).message); }
+  // override ผ่าน dialog (แทน prompt()) — API เดิม: statusOverride / progressOverride
+  const [ovr, setOvr] = useState<{ kind: 'status' | 'progress'; code: string; value: string; reason: string } | null>(null);
+  const saveOverride = async () => {
+    if (!ovr) return;
+    const { kind, code, value, reason } = ovr;
+    if (!value) return;
+    try {
+      if (kind === 'status') { await statusOverride(code, value, reason); setMsg(`override สถานะ ${code}`); }
+      else { await progressOverride(code, Number(value), reason); setMsg(`override progress ${code}`); }
+      setOvr(null); load();
+    } catch (e) { setMsg((e as Error).message); setOvr(null); }
   };
 
   return (
     <div>
-      <Toast msg={msg} />
+      <Toast msg={msg} onClose={() => setMsg('')} />
 
       {showAdd ? (
-        <div className="mb-6 rounded-lg border border-slate-300 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">เพิ่มโครงการใหม่</h3>
+        <div className={formBox}>
+          <h3 className="mb-3 text-base font-semibold">เพิ่มโครงการใหม่</h3>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Field label="Project Code *">
               <input value={form.projectCode} onChange={(e) => setForm({ ...form, projectCode: e.target.value })}
@@ -167,41 +164,42 @@ function ProjectsTab() {
             </Field>
             <Field label="Lark tasklist_guid *">
               <input value={form.larkTasklistGuid} onChange={(e) => setForm({ ...form, larkTasklistGuid: e.target.value })}
-                placeholder="b569b7d4-…" className={input + ' w-full font-mono text-xs'} />
+                placeholder="b569b7d4-…" className={input + ' w-full font-mono !text-xs'} />
             </Field>
           </div>
-          <p className="mt-2 text-xs text-slate-400">ก็อบ guid จาก URL บอร์ด Lark · ข้าวต้องเป็นสมาชิกบอร์ดนั้น</p>
+          <p className="mt-2 text-xs text-ink-3">ก็อบ guid จาก URL บอร์ด Lark · ข้าวต้องเป็นสมาชิกบอร์ดนั้น</p>
           <div className="mt-3 flex gap-3">
             <button onClick={doAdd} className={btnPrimary}>เพิ่ม + ทดสอบ</button>
             <button onClick={() => setShowAdd(false)} className={btnGhost}>ยกเลิก</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setShowAdd(true)} className="mb-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-900">
+        <button onClick={() => setShowAdd(true)} className={btnAdd}>
           + เพิ่มโครงการ
         </button>
       )}
 
-      <div className="divide-y divide-slate-200">
+      <div className="flex flex-col gap-4">
         {projects.map((p) => (
-          <div key={p.id} className="py-6 first:pt-2">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <h3 className="font-semibold text-slate-900">{p.displayName}</h3>
+          <div key={p.id} className="card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-hair pb-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                <h3 className="text-base font-semibold">{p.displayName}</h3>
+                <span className="code text-ink-3">{p.projectCode}</span>
                 {(p.statusOverride || p.progressOverride != null) && (
-                  <span className="text-xs text-amber-600">
+                  <span className="rounded-full border border-risk-bd bg-risk-bg px-2 py-0.5 text-xs font-medium text-risk">
                     override {p.statusOverride ?? ''} {p.progressOverride != null ? `· ${p.progressOverride}%` : ''}
                   </span>
                 )}
               </div>
-              <div className="flex gap-4 text-xs">
-                <button onClick={() => doTest(p.projectCode)} className={btnGhost}>ทดสอบการเชื่อมต่อ</button>
-                <button onClick={() => doStatusOverride(p.projectCode)} className={btnGhost}>Override สถานะ</button>
-                <button onClick={() => doProgressOverride(p.projectCode)} className={btnGhost}>Override progress</button>
+              <div className="flex flex-wrap gap-1">
+                <button onClick={() => doTest(p.projectCode)} className={`${btnGhost} btn-sm`}>ทดสอบการเชื่อมต่อ</button>
+                <button onClick={() => setOvr({ kind: 'status', code: p.projectCode, value: p.statusOverride ?? '', reason: '' })} className={`${btnGhost} btn-sm`}>Override สถานะ</button>
+                <button onClick={() => setOvr({ kind: 'progress', code: p.projectCode, value: p.progressOverride != null ? String(p.progressOverride) : '', reason: '' })} className={`${btnGhost} btn-sm`}>Override progress</button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-5">
               {DATE_FIELDS.map((f) => (
                 <Field key={f} label={DATE_LABEL[f]}>
                   <input type="date" defaultValue={toInput(p[f] as string | null)}
@@ -222,7 +220,59 @@ function ProjectsTab() {
           </div>
         ))}
       </div>
+
+      <OverrideDialog ovr={ovr} onChange={setOvr} onSave={saveOverride} />
     </div>
+  );
+}
+
+const OVERRIDE_STATUSES = ['ON_TRACK', 'AT_RISK', 'DELAYED', 'DONE', 'WAITING'] as const;
+
+function OverrideDialog({ ovr, onChange, onSave }: {
+  ovr: { kind: 'status' | 'progress'; code: string; value: string; reason: string } | null;
+  onChange: (o: { kind: 'status' | 'progress'; code: string; value: string; reason: string } | null) => void;
+  onSave: () => void;
+}) {
+  const close = () => onChange(null);
+  const reasonLen = ovr?.reason.trim().length ?? 0;
+  return (
+    <Dialog
+      open={!!ovr}
+      title={ovr ? `${ovr.kind === 'status' ? 'Override สถานะ' : 'Override progress'} · ${ovr.code}` : ''}
+      onClose={close}
+      actions={
+        <>
+          <button onClick={close} className="btn-secondary">ยกเลิก</button>
+          <button onClick={onSave} disabled={!ovr?.value} className="btn-primary">บันทึก override</button>
+        </>
+      }
+    >
+      {ovr?.kind === 'status' ? (
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>สถานะ</span>
+          <div className="seg flex-wrap">
+            {OVERRIDE_STATUSES.map((st) => (
+              <button key={st} onClick={() => onChange({ ...ovr, value: st })} className={`seg-opt ${ovr.value === st ? 'seg-opt-on' : ''}`}>
+                {STATUS_LABEL[st]}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-ink-3">WAITING = รอเริ่ม</span>
+        </div>
+      ) : ovr ? (
+        <label className="flex flex-col gap-1.5">
+          <span className={label}>progress % (0-100)</span>
+          <input type="number" min={0} max={100} value={ovr.value} onChange={(e) => onChange({ ...ovr, value: e.target.value })} className={input + ' w-32'} autoFocus />
+        </label>
+      ) : null}
+      {ovr && (
+        <label className="flex flex-col gap-1.5">
+          <span className={label}>เหตุผล (≥10 ตัวอักษร)</span>
+          <textarea rows={3} value={ovr.reason} onChange={(e) => onChange({ ...ovr, reason: e.target.value })} className={input} />
+          <span className={`text-xs tabular-nums ${reasonLen >= 10 ? 'text-ink-3' : 'text-risk'}`}>{reasonLen} ตัวอักษร</span>
+        </label>
+      )}
+    </Dialog>
   );
 }
 
@@ -241,34 +291,42 @@ function InstallmentEditor({ code, onChange }: { code: string; onChange: () => v
   };
   const togglePaid = async (id: number, cur: string) => { await patchInstallment(id, { status: cur === 'PAID' ? 'PENDING' : 'PAID' }); load(); onChange(); };
   const del = async (id: number) => { await deleteInstallment(id); load(); onChange(); };
+  const [confirmDel, setConfirmDel] = useState<{ id: number; name: string; amount: number } | null>(null);
 
-  if (!open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs text-slate-500 hover:text-slate-900">จัดการงวดการเงิน →</button>;
+  if (!open) return <button onClick={() => setOpen(true)} className="btn-ghost btn-sm mt-3 -ml-2.5">จัดการงวดการเงิน →</button>;
 
   return (
-    <div className="mt-4 border-l-2 border-slate-200 pl-4">
+    <div className="mt-4 rounded-lg border border-line bg-canvas p-3.5">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-ink-2">
           งวดการเงิน{data && <> · จ่ายแล้ว {money(data.paid)} / {money(data.budget)} {data.burnPct != null && `(${data.burnPct}%)`}</>}
         </span>
-        <button onClick={() => setOpen(false)} className="text-xs text-slate-400">ปิด</button>
+        <button onClick={() => setOpen(false)} className="btn-ghost btn-sm">ปิด</button>
       </div>
       {data?.installments.map((it) => (
-        <div key={it.id} className="flex items-center gap-3 border-t border-slate-100 py-1.5 text-xs">
+        <div key={it.id} className="flex items-center gap-3 border-t border-hair py-2 text-xs">
           <span className="flex-1">{it.name}</span>
           <span className="tabular-nums">{money(it.amount)}</span>
-          <span className="text-slate-400">{fmtDate(it.dueDate)}</span>
+          <span className="tabular-nums text-ink-3">{fmtDate(it.dueDate)}</span>
           <button onClick={() => togglePaid(it.id, it.status)}
-            className={`rounded px-2 py-0.5 ${it.status === 'PAID' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            className={`rounded-full border px-2.5 py-0.5 font-semibold ${it.status === 'PAID' ? 'border-ok-bd bg-ok-bg text-ok' : 'border-wait-bd bg-surface text-ink-2'}`}>
             {it.status === 'PAID' ? 'จ่ายแล้ว' : 'รอจ่าย'}
           </button>
-          <button onClick={() => del(it.id)} className="text-slate-300 hover:text-red-600">✕</button>
+          <button onClick={() => setConfirmDel({ id: it.id, name: it.name, amount: it.amount })} aria-label="ลบงวด" className="text-ink-3 hover:text-late">✕</button>
         </div>
       ))}
+      <ConfirmDialog
+        open={!!confirmDel}
+        title={confirmDel ? `ลบงวด "${confirmDel.name}"?` : ''}
+        detail={confirmDel ? `${money(confirmDel.amount)} · ${code} — ย้อนกลับไม่ได้` : undefined}
+        onConfirm={() => confirmDel && del(confirmDel.id)}
+        onClose={() => setConfirmDel(null)}
+      />
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input placeholder="ชื่องวด (งวด 1 · มัดจำ)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={input + ' flex-1 text-xs'} />
-        <input type="number" placeholder="จำนวน" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={input + ' w-24 text-xs'} />
-        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={input + ' text-xs'} />
-        <button onClick={add} className="rounded-md bg-slate-900 px-2.5 py-1.5 text-xs text-white">เพิ่ม</button>
+        <input placeholder="ชื่องวด (งวด 1 · มัดจำ)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={input + ' min-w-40 flex-1 !text-xs'} />
+        <input type="number" placeholder="จำนวน" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={input + ' w-28 !text-xs'} />
+        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={input + ' !text-xs'} />
+        <button onClick={add} className="btn-primary btn-sm">เพิ่ม</button>
       </div>
     </div>
   );
@@ -278,7 +336,7 @@ function InstallmentEditor({ code, onChange }: { code: string; onChange: () => v
 const DEPTS = ['PM', 'BA', 'UXUI', 'DEV', 'QA', 'NONE'];
 const BUCKETS = ['BACKLOG', 'IN_PROGRESS', 'WAITING', 'DONE', 'BLOCKED'];
 const MATCH_TYPES = ['EXACT', 'CONTAINS', 'FALLBACK'];
-const sel = 'rounded border border-slate-200 px-1.5 py-1 text-xs focus:border-slate-900 focus:outline-none';
+const sel = 'rounded-md border border-line-strong bg-surface px-1.5 py-1 text-xs focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-100';
 
 function RulesTab() {
   const [unmapped, setUnmapped] = useState<UnmappedSection[]>([]);
@@ -303,6 +361,7 @@ function RulesTab() {
   };
   const editRule = async (id: number, data: Partial<SectionRule>) => { await patchSectionRule(id, data); await afterChange('แก้ rule'); };
   const removeRule = async (id: number) => { await deleteSectionRule(id); await afterChange('ลบ rule'); };
+  const [confirmDel, setConfirmDel] = useState<SectionRule | null>(null);
   const saveNew = async () => {
     if (!form?.pattern || !form?.deptCode || !form?.bucketCode) { setMsg('ต้องมี pattern + dept + bucket'); return; }
     await createSectionRule({
@@ -316,16 +375,16 @@ function RulesTab() {
 
   return (
     <div>
-      <Toast msg={msg} />
-      {busy && <div className="mb-4 text-sm text-slate-400">กำลัง recompute…</div>}
+      <Toast msg={msg} onClose={() => setMsg('')} />
+      {busy && <div className="mb-4 text-sm text-ink-3">กำลัง recompute…</div>}
 
       {unmapped.length > 0 && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-red-600">{unmapped.length} section ยังไม่ได้ map</div>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mb-5 rounded-xl border border-late-bd bg-late-bg p-4">
+          <div className="text-sm font-semibold text-late">{unmapped.length} section ยังไม่ได้ map</div>
+          <div className="mt-2.5 flex flex-wrap gap-2">
             {unmapped.map((u, i) => (
-              <button key={i} onClick={() => mapSection(u)} className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs hover:border-red-400">
-                {projName(u.projectId)} · {u.sectionName} <span className="text-slate-400">({u.cardCount})</span>
+              <button key={i} onClick={() => mapSection(u)} className="rounded-full border border-late-bd bg-surface px-3 py-1 text-xs hover:border-late">
+                {projName(u.projectId)} · {u.sectionName} <span className="text-ink-3">({u.cardCount})</span>
               </button>
             ))}
           </div>
@@ -333,8 +392,8 @@ function RulesTab() {
       )}
 
       {form ? (
-        <div className="mb-6 rounded-lg border border-slate-300 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">เพิ่ม / map section rule</h3>
+        <div className={formBox}>
+          <h3 className="mb-3 text-base font-semibold">เพิ่ม / map section rule</h3>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Field label="บอร์ด">
               <select value={form.projectId ?? ''} onChange={(e) => setForm({ ...form, projectId: e.target.value ? Number(e.target.value) : null })} className={input + ' w-full'}>
@@ -356,33 +415,42 @@ function RulesTab() {
         </div>
       ) : (
         <button onClick={() => setForm({ matchType: 'EXACT', priority: 15, weight: 0, deptCode: 'QA', bucketCode: 'DONE', projectId: null })}
-          className="mb-4 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-900">
+          className={btnAdd}>
           + เพิ่ม rule
         </button>
       )}
 
-      <table className="w-full text-sm">
+      <div className="card overflow-x-auto px-1.5 pb-2 pt-2">
+      <table className="tbl min-w-[640px]">
         <thead>
-          <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
-            <th className="pb-2 text-left font-medium">scope</th><th className="pb-2 text-left font-medium">pattern</th>
-            <th className="pb-2 text-left font-medium">dept</th><th className="pb-2 text-left font-medium">bucket</th>
-            <th className="pb-2 text-left font-medium">weight</th><th className="pb-2 text-left font-medium">pri</th><th></th>
+          <tr>
+            <th>scope</th><th>pattern</th>
+            <th>dept</th><th>bucket</th>
+            <th>weight</th><th>pri</th><th></th>
           </tr>
         </thead>
         <tbody>
           {rules.map((r) => (
-            <tr key={r.id} className={`border-b border-slate-100 ${r.isActive ? '' : 'opacity-40'}`}>
-              <td className="py-1.5 pr-2 text-xs text-slate-400">{projName(r.projectId)}</td>
-              <td className="pr-2 text-slate-700">{r.pattern}</td>
+            <tr key={r.id} className={r.isActive ? '' : 'opacity-40'}>
+              <td className="code text-ink-3">{projName(r.projectId)}</td>
+              <td>{r.pattern}</td>
               <td className="pr-1"><select defaultValue={r.deptCode} onChange={(e) => editRule(r.id, { deptCode: e.target.value })} className={sel}>{DEPTS.map((d) => <option key={d}>{d}</option>)}</select></td>
               <td className="pr-1"><select defaultValue={r.bucketCode} onChange={(e) => editRule(r.id, { bucketCode: e.target.value })} className={sel}>{BUCKETS.map((b) => <option key={b}>{b}</option>)}</select></td>
               <td className="pr-1"><input type="number" defaultValue={r.weight} onBlur={(e) => Number(e.target.value) !== r.weight && editRule(r.id, { weight: Number(e.target.value) })} className={sel + ' w-14'} /></td>
-              <td className="pr-1 text-xs text-slate-400">{r.priority}</td>
-              <td><button onClick={() => removeRule(r.id)} className="text-xs text-slate-300 hover:text-red-600">ลบ</button></td>
+              <td className="pr-1 text-xs tabular-nums text-ink-3">{r.priority}</td>
+              <td className="text-right"><button onClick={() => setConfirmDel(r)} className="text-xs text-ink-3 hover:text-late">ลบ</button></td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
+      <ConfirmDialog
+        open={!!confirmDel}
+        title={confirmDel ? `ลบ rule "${confirmDel.pattern}"?` : ''}
+        detail={confirmDel ? `${projName(confirmDel.projectId)} · ${confirmDel.deptCode} / ${confirmDel.bucketCode} — ระบบจะ recompute ทันที` : undefined}
+        onConfirm={() => confirmDel && removeRule(confirmDel.id)}
+        onClose={() => setConfirmDel(null)}
+      />
     </div>
   );
 }
@@ -426,14 +494,14 @@ function UsersTab() {
 
   return (
     <div>
-      <Toast msg={msg} />
-      <p className="mb-4 text-xs text-slate-500">
+      <Toast msg={msg} onClose={() => setMsg('')} />
+      <p className="mb-4 text-sm text-ink-2">
         คนที่อยู่ในรายการนี้ (และเปิดใช้งาน) เท่านั้นที่ login ด้วย Lark ได้ · ใช้อีเมลเดียวกับบัญชี Lark ของบริษัท
       </p>
 
       {form ? (
-        <div className="mb-6 rounded-lg border border-slate-300 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">เพิ่มผู้ใช้</h3>
+        <div className={formBox}>
+          <h3 className="mb-3 text-base font-semibold">เพิ่มผู้ใช้</h3>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Field label="อีเมล Lark"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={input + ' w-full'} placeholder="name@elegance.co.th" /></Field>
             <Field label="ชื่อ (ไม่ใส่ก็ได้)"><input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} className={input + ' w-full'} /></Field>
@@ -448,7 +516,7 @@ function UsersTab() {
               <div className={label}>บอร์ดที่เข้าได้</div>
               <div className="mt-1 flex flex-wrap gap-4">
                 {boardOpts.map((b) => (
-                  <label key={b.code} className="flex items-center gap-1.5 text-sm text-slate-700">
+                  <label key={b.code} className="flex items-center gap-1.5 text-sm">
                     <input type="checkbox" checked={form.boards.includes(b.code)} onChange={() => setForm({ ...form, boards: toggle(form.boards, b.code) })} />
                     {b.name}
                   </label>
@@ -463,25 +531,26 @@ function UsersTab() {
         </div>
       ) : (
         <button onClick={() => setForm({ email: '', displayName: '', role: 'VIEWER', boards: [] })}
-          className="mb-4 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-900">
+          className={btnAdd}>
           + เพิ่มผู้ใช้
         </button>
       )}
 
-      <table className="w-full text-sm">
+      <div className="card overflow-x-auto px-1.5 pb-2 pt-2">
+      <table className="tbl min-w-[760px]">
         <thead>
-          <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
-            <th className="pb-2 text-left font-medium">อีเมล</th><th className="pb-2 text-left font-medium">ชื่อ</th>
-            <th className="pb-2 text-left font-medium">สิทธิ์</th><th className="pb-2 text-left font-medium">บอร์ด</th>
-            <th className="pb-2 text-left font-medium">Lark</th><th></th>
+          <tr>
+            <th>อีเมล</th><th>ชื่อ</th>
+            <th>สิทธิ์</th><th>บอร์ด</th>
+            <th>Lark</th><th></th>
           </tr>
         </thead>
         <tbody>
           {users.map((u) => {
             const self = u.id === me?.id; // แถวตัวเอง: ล็อก role + ปิดใช้งาน (กันล็อกตัวเองออก)
             return (
-              <tr key={u.id} className={`border-b border-slate-100 ${u.isActive ? '' : 'opacity-40'}`}>
-                <td className="py-1.5 pr-2 text-slate-700">{u.email}{self && <span className="ml-1.5 text-[11px] text-slate-400">(คุณ)</span>}</td>
+              <tr key={u.id} className={u.isActive ? '' : 'opacity-40'}>
+                <td>{u.email}{self && <span className="ml-1.5 text-[11px] text-ink-3">(คุณ)</span>}</td>
                 <td className="pr-2">
                   <input defaultValue={u.displayName} className={sel + ' w-36'}
                     onBlur={(e) => e.target.value.trim() && e.target.value !== u.displayName && run(() => patchUser(u.id, { displayName: e.target.value }), 'แก้ชื่อแล้ว')} />
@@ -494,11 +563,11 @@ function UsersTab() {
                 </td>
                 <td className="pr-2">
                   {u.role === 'ADMIN' ? (
-                    <span className="text-xs text-slate-400">ทุกบอร์ด</span>
+                    <span className="text-xs text-ink-3">ทุกบอร์ด</span>
                   ) : (
                     <div className="flex flex-wrap gap-x-3 gap-y-1">
                       {boardOpts.map((b) => (
-                        <label key={b.code} className="flex items-center gap-1 text-xs text-slate-600">
+                        <label key={b.code} className="flex items-center gap-1 text-xs text-ink-2">
                           <input type="checkbox" checked={u.boards.includes(b.code)}
                             onChange={() => run(() => patchUser(u.id, { boards: toggle(u.boards, b.code) }), `อัปเดตบอร์ดของ ${u.email}`)} />
                           {b.code}
@@ -507,11 +576,16 @@ function UsersTab() {
                     </div>
                   )}
                 </td>
-                <td className="pr-2 text-xs text-slate-400">{u.linked ? 'ผูกแล้ว' : 'ยังไม่เคย login'}</td>
+                <td className="pr-2 text-xs">
+                  <span className={`inline-flex items-center gap-1.5 ${u.linked ? 'text-ok' : 'text-ink-3'}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${u.linked ? 'bg-ok' : 'bg-line-strong'}`} />
+                    {u.linked ? 'ผูกแล้ว' : 'ยังไม่เคย login'}
+                  </span>
+                </td>
                 <td className="text-right">
                   {!self && (
                     <button onClick={() => run(() => patchUser(u.id, { isActive: !u.isActive }), u.isActive ? `ปิดใช้งาน ${u.email}` : `เปิดใช้งาน ${u.email}`)}
-                      className={`text-xs ${u.isActive ? 'text-slate-400 hover:text-red-600' : 'text-doing hover:underline'}`}>
+                      className={`text-xs ${u.isActive ? 'text-ink-3 hover:text-late' : 'font-medium text-brand-700 hover:underline'}`}>
                       {u.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                     </button>
                   )}
@@ -521,6 +595,7 @@ function UsersTab() {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
