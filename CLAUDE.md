@@ -7,19 +7,16 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 ดึงข้อมูลจริงจาก **Lark Task API** → ETL → PostgreSQL → REST API → React dashboard
 แทน prototype เดิมบน Genspark · ผู้สั่งงาน: ข้าว (PM, Elegance Consultant)
 
-## สถานะปัจจุบัน (21 ก.ย. 2026)
-- ✅ **P1 Data Layer** — Lark ETL 6 บอร์ด · OAuth + refresh rotation · snapshot · cron
-- ✅ **PM Dashboard + Admin** (backend + frontend) — KPI/Gantt/donut/attention/trend/drill-down · CRUD section rules + recompute · budget/งวดการเงิน · as-of
-- ✅ **หน้า Finance** (C-level) · **auth UI** (Login/AuthGate — พร้อมสำหรับ SSO)
-- ✅ **Executive UI redesign** (AppShell navy + KPI icon/tint + Gantt polish) — ทุกหน้าเข้าชุด
-- ✅ **Deploy จริงบน server** `203.150.48.37` (Ubuntu 22.04, Docker) — container ครบ, authorize + sync 561 ใบสำเร็จ, nginx ตอบ 200
-- 🔴 **ติด: provider ยังไม่เปิด port 80/443/22 external** (portal ไม่มี firewall UI → ต้องแจ้ง provider)
-- 56 backend tests ผ่าน
-
-## 🎯 งานถัดไป — Lark SSO + HTTPS ฟรี (ทำต่อจากนี้)
-ดูแผนละเอียด → **[docs/NEXT-SSO.md](docs/NEXT-SSO.md)**
-สรุป: domain ฟรี (DuckDNS/nip.io) + Caddy auto-HTTPS + เปิด `AUTH_MODE=lark_sso` + whitelist AppUser
-เหตุผล: ตอนนี้ `AUTH_MODE=dev` = **ทุกคนที่เข้าถึง = ADMIN** → ต้องปิดก่อนเปิด public
+## สถานะปัจจุบัน (24 ก.ย. 2026) — ละเอียดดู [docs/STATUS.md](docs/STATUS.md)
+- ✅ **P1 Data Layer** — Lark ETL · OAuth + refresh rotation · snapshot · cron
+- ✅ **PM Dashboard + Admin + Finance** — KPI/Gantt/drill-down · section rules · budget/งวดการเงิน · as-of
+- ✅ **POC ขึ้นจริง** `https://elegancedb.duckdns.org` — Vultr + DuckDNS + Caddy (HTTPS) → [docs/POC-DEPLOY.md](docs/POC-DEPLOY.md)
+- ✅ **Lark SSO + whitelist** (`AUTH_MODE=lark_sso`) · Admin แท็บ "ผู้ใช้" · หน้า 🚫 คนนอก whitelist
+- ✅ **Portal หลายแผนก** — landing เลือกบอร์ด · สิทธิ์บอร์ดรายคน · บอร์ด QA ที่ `/qa/` (repo Dashboard_Tester) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
+- ✅ **CI/CD** — merge main → test + build image ขึ้น GHCR (ผ่าน) · watchtower บน server ยังปิด (รอ `docker login ghcr.io`)
+- ✅ **Hardening** — session ใน Postgres (H-1) · `scripts/backup-db.sh` (H-2) · เชื่อม Lark ใหม่ผ่านปุ่ม Admin
+- ⏳ **รอข้าว** — ตั้ง cron backup + ปิด port/SSH password (H-3) → [docs/MAINTAINING.md](docs/MAINTAINING.md)
+- server เก่า `203.150.48.37` เลิกใช้แล้ว
 
 ## Stack + โครงสร้าง
 - **backend** `server/` — Node 20 + Express + Prisma + PostgreSQL (JavaScript, ESM)
@@ -39,7 +36,7 @@ cd server && npm install && npx prisma migrate deploy && npm run seed
 npm run lark:authorize   # ครั้งแรก (ดู docs/DEV.md)
 node src/index.js        # API :3000
 cd ../web && npm install && npm run dev   # :5173 (proxy /api → :3000)
-cd server && npm test    # 56 tests
+cd server && npm run test:ci   # unit tests (npm test = รวม integration ต้องมี DB)
 ```
 
 ## 🔴 กติกา Git (ห้ามละเมิด — คน + AI)
@@ -75,4 +72,4 @@ cd server && npm test    # 56 tests
 - `docs/POC-DEPLOY.md` — **POC hosting ฟรี**: Oracle Free VM + DuckDNS + Caddy + Lark SSO
 - `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + checklist repo Dashboard_Tester
-- `docs/NEXT-SSO.md` — **งานถัดไป: Lark SSO + HTTPS**
+- `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)

@@ -38,8 +38,9 @@ if (code) {
   console.log('Scope:', REQUIRED_SCOPES.join(', '));
   console.log('\n1) เปิด URL นี้ใน browser (เครื่องที่ login Lark ได้) → login + กดอนุญาต:\n');
   console.log(buildAuthorizeUrl(state));
-  console.log(`\n2) หลังกดอนุญาต browser จะเด้งไป ${env.larkRedirectUri}?code=... (หน้าจะ error ไม่เป็นไร)`);
-  console.log('   → ก็อบค่า code จาก address bar (ส่วนหลัง code= จนถึง & หรือจบ URL)\n');
+  console.log(`\n2) หลังกดอนุญาต browser จะเด้งไป ${env.larkRedirectUri}?code=...`);
+  console.log('   → หน้านั้นจะโชว์ code + คำสั่งให้ก็อบ (ถ้าหน้า error ให้ก็อบค่าหลัง code= จาก address bar)');
+  console.log('   💡 ง่ายกว่า: ADMIN กดปุ่ม "เชื่อม Lark ใหม่" ในหน้าตั้งค่า — ไม่ต้องเข้า server\n');
   console.log('3) เอา code มารันบน server (ก็อบ code ให้ไว หมดอายุใน ~นาที):');
   console.log('   docker compose -f docker-compose.prod.yml exec server npm run lark:authorize -- --code <CODE>\n');
   await prisma.$disconnect();

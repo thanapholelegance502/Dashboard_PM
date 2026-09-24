@@ -5,7 +5,7 @@ import {
   getUnmappedSections, getSectionRules, createProject,
   getBudget, createInstallment, patchInstallment, deleteInstallment,
   createSectionRule, patchSectionRule, deleteSectionRule, recompute,
-  getUsers, createUser, patchUser,
+  getUsers, createUser, patchUser, getSyncStatus, larkAuthorizeUrl,
 } from '../lib/api';
 import type { AdminProject, UnmappedSection, SectionRule, BudgetResult, AppUserRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
@@ -30,6 +30,7 @@ export default function Admin() {
   const isAdmin = useAuth().user?.role === 'ADMIN'; // จัดการผู้ใช้ = ADMIN เท่านั้น
   return (
     <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules · Users">
+      {isAdmin && <LarkConnectCard />}
       <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <nav className="flex gap-6 border-b border-slate-200 text-sm">
           <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')}>โครงการ · Milestone</TabBtn>
@@ -54,6 +55,43 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     >
       {children}
     </button>
+  );
+}
+
+// ══ Lark connection (token ETL) ═════════════════════
+// ปุ่มพาไป Lark → callback กลับมา /admin?lark=connected|failed (server/src/api/routes/auth.js)
+const LARK_RESULT: Record<string, { text: string; cls: string }> = {
+  connected: { text: 'เชื่อม Lark สำเร็จ — กด Sync now ที่ Dashboard เพื่อดึงข้อมูลรอบใหม่', cls: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
+  failed: { text: 'เชื่อม Lark ไม่สำเร็จ — ลองกดใหม่อีกครั้ง (ถ้ายังไม่ได้ ดู server log)', cls: 'bg-rose-50 text-rose-800 ring-rose-200' },
+};
+
+function LarkConnectCard() {
+  const [result] = useState(() => new URLSearchParams(window.location.search).get('lark') ?? '');
+  const [needReauth, setNeedReauth] = useState(false);
+
+  useEffect(() => {
+    // ลบ ?lark=… ออกจาก URL — refresh แล้วข้อความไม่เด้งซ้ำ
+    if (result) window.history.replaceState(null, '', window.location.pathname);
+    getSyncStatus().then((s) => setNeedReauth(s.needReauthorize)).catch(() => {});
+  }, [result]);
+
+  const banner = LARK_RESULT[result];
+  const showWarn = needReauth && result !== 'connected';
+  return (
+    <div className="mx-auto mb-4 max-w-5xl space-y-3">
+      {banner && <div className={`rounded-md px-3 py-2 text-sm ring-1 ${banner.cls}`}>{banner.text}</div>}
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 shadow-sm ring-1 ${showWarn ? 'bg-amber-50 ring-amber-200' : 'bg-white ring-slate-200'}`}>
+        <div className="text-sm">
+          <div className="font-semibold text-slate-900">การเชื่อมต่อ Lark (token ETL)</div>
+          <div className={showWarn ? 'text-amber-800' : 'text-slate-500'}>
+            {showWarn
+              ? '⚠️ token หมดอายุ — sync ดึงข้อมูลไม่ได้ ต้องเชื่อม Lark ใหม่'
+              : 'ใช้เมื่อ sync แจ้งว่าต้อง authorize ใหม่ · login Lark ด้วยบัญชีที่เห็นทุกบอร์ด'}
+          </div>
+        </div>
+        <a href={larkAuthorizeUrl} className={btnPrimary}>เชื่อม Lark ใหม่</a>
+      </div>
+    </div>
   );
 }
 

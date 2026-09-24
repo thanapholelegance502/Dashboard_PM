@@ -9,6 +9,8 @@ import { resolveSectionRule } from '../../domain/bucket.js';
 import { recomputeMetricsAndAttention } from '../../etl/postprocess.js';
 import { normalizeNewUser, assertUserChangeAllowed } from '../../domain/users.js';
 import { normalizeBoards } from '../../domain/boards.js';
+import { newEtlState } from '../../domain/oauthState.js';
+import { buildAuthorizeUrl } from '../../lark/auth.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireRole('ADMIN', 'PM')); // ทุก endpoint ต้อง ADMIN|PM
@@ -408,4 +410,12 @@ adminRouter.patch('/users/:id', adminOnly, async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+// GET /api/admin/lark/authorize — ปุ่ม "เชื่อม Lark ใหม่" (token ETL) · ADMIN เท่านั้น
+// state สุ่มเก็บใน session → callback รับเฉพาะ state นี้ (กันคนยัดบัญชี Lark ตัวเองเป็น token ETL)
+adminRouter.get('/lark/authorize', adminOnly, (req, res) => {
+  const state = newEtlState();
+  req.session.larkEtlState = state;
+  res.redirect(buildAuthorizeUrl(state));
 });
