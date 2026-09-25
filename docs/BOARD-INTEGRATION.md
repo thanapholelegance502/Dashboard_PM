@@ -236,7 +236,7 @@ docker compose -f docker-compose.prod.yml up -d qa
 2. `web/nginx.conf` — copy บล็อก `/_auth/qa` + `/qa/` เปลี่ยนเป็น `ba` (board=BA, upstream `http://ba:<port>`)
 3. `docker-compose.prod.yml` — copy service `qa` เป็น `ba` (profile `ba`, image, env_file `ba.env`, volume)
 4. `bash scripts/create-board-db.sh ba` (ถ้าต้องใช้ DB)
-5. ส่งเอกสารนี้ให้ทีมแผนกทำตามหัวข้อ "สิ่งที่แอปต้องทำ"
+5. ส่งเอกสารนี้ให้ทีมแผนกทำตามหัวข้อ "สิ่งที่แอปต้องทำ" (ทีม BA → ส่ง [BA-ONBOARDING.md](BA-ONBOARDING.md) ฉบับย่อเฉพาะ BA)
 
 ---
 

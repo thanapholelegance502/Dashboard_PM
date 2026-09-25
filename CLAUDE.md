@@ -15,6 +15,7 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **Portal หลายแผนก** — landing เลือกบอร์ด · สิทธิ์บอร์ดรายคน · บอร์ด QA ที่ `/qa/` (repo Dashboard_Tester) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
 - ✅ **CI/CD ทำงานแล้ว** — merge main → test + build image → GHCR → watchtower บน Vultr deploy เอง (~2–5 นาที)
 - ✅ **Hardening** — session ใน Postgres (H-1) · backup cron ทุกวัน (H-2) · ufw 22/80/443 · เชื่อม Lark ใหม่ผ่านปุ่ม Admin
+- 🆕 **บอร์ด BA** ที่ `/ba/` (repo Dashboard_BA · DB `ba` แยก) — ฝั่ง portal พร้อมแล้ว · เปิดบน server ตาม [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md#ภาคผนวก--ฝั่ง-server-ข้าวทำ-ครั้งเดียว)
 - ⏳ **บอร์ด QA** — ยังไม่เปิดบน server · ทีม tester แก้ repo เองผ่าน PR (ข้าวรีวิว + merge `Main`) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
 - 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
@@ -73,4 +74,5 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/POC-DEPLOY.md` — **POC hosting**: VPS (Vultr) + DuckDNS + Caddy + Lark SSO
 - `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
+- `docs/BA-ONBOARDING.md` — **ส่งทีม BA**: เอาบอร์ด BA ขึ้น `/ba/` · DB `ba` แยก · flow PR/deploy · template CI
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)
