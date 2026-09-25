@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getDrilldown, getBudget } from '../lib/api';
 import type { DrilldownResult, BudgetResult } from '../lib/types';
 import { fmtDate, money } from '../lib/format';
+import { SkeletonRows, ErrorBox } from './SectionCard';
 
 export interface DrillFilter {
   dept?: string;
@@ -58,44 +59,49 @@ export default function DrillDownPanel({ open, code, title, filter, onClose }: P
   for (const t of allItems) byBucket[t.bucketCode] = (byBucket[t.bucketCode] ?? 0) + 1;
   const toggle = (cur: string | null, v: string, set: (x: string | null) => void) => set(cur === v ? null : v);
 
+  const chip = (on: boolean) =>
+    `rounded-full border px-2.5 py-1 transition ${on ? 'border-brand-700 bg-brand-700 text-white' : 'border-line bg-surface text-ink-2 hover:border-brand-700'}`;
+
   return (
-    <div className="fixed inset-0 z-40 flex justify-end no-print">
-      <div className="flex-1 bg-black/30" onClick={onClose} />
-      <div className="flex h-full w-full max-w-2xl flex-col bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b border-slate-200 p-4">
-          <div>
-            <h3 className="font-semibold">{title}</h3>
-            <p className="text-xs text-slate-500">{code}</p>
-          </div>
+    <div className="no-print fixed inset-0 z-40 flex justify-end">
+      <div className="flex-1 bg-[rgba(22,38,63,0.18)]" onClick={onClose} />
+      <div className="flex h-full w-full max-w-2xl flex-col bg-surface shadow-panel">
+        <div className="flex flex-col gap-1.5 border-b border-hair px-[22px] pb-4 pt-5">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold tabular-nums">
-              {data ? (hasFilter ? `${filtered.length}/${data.total} ใบ` : `${data.total} ใบ`) : ''}
-            </span>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+            <span className="code text-ink-3">{code}</span>
+            <button onClick={onClose} aria-label="ปิด" className="ml-auto flex h-7 w-7 items-center justify-center rounded-md bg-surface-2 text-sm text-ink-2 hover:text-ink">
               ✕
             </button>
           </div>
+          <div className="flex items-baseline gap-2.5">
+            <h3 className="text-xl font-semibold">{title}</h3>
+            <span className="text-[28px] font-semibold leading-none tabular-nums">
+              {data ? (hasFilter ? `${filtered.length}/${data.total}` : data.total) : ''}
+            </span>
+            {data && <span className="text-sm text-ink-3">ใบ</span>}
+          </div>
+          <span className="text-xs text-ink-3">หลักฐานจาก Lark Task · คลิก "เปิดใน Lark" เพื่อดูการ์ดจริง</span>
         </div>
 
-        {loading && <div className="p-6 text-sm text-slate-400">กำลังโหลด…</div>}
-        {err && <div className="p-6 text-sm text-delayed">ผิดพลาด: {err}</div>}
+        {loading && <div className="p-[22px]"><SkeletonRows rows={5} /></div>}
+        {err && <div className="p-[22px]"><ErrorBox title={`ผิดพลาด: ${err}`} /></div>}
 
         {data && (
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto px-[22px] py-4">
             {/* budget + งวดการเงิน (req2) */}
             {budget && (budget.budget != null || budget.installments.length > 0) && (
-              <div className="mb-4 rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold text-slate-600">งบประมาณ</span>
-                  <span className="tabular-nums">
-                    จ่ายแล้ว <b>{money(budget.paid)}</b> / {money(budget.budget)}
-                    {budget.burnPct != null && <span className="ml-1 text-slate-400">({budget.burnPct}%)</span>}
+              <div className="mb-4 rounded-xl border border-line bg-canvas p-3.5">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="font-semibold">งบประมาณ</span>
+                  <span className="tabular-nums text-ink-2">
+                    จ่ายแล้ว <b className="text-ink">{money(budget.paid)}</b> / {money(budget.budget)}
+                    {budget.burnPct != null && <span className="ml-1 text-ink-3">({budget.burnPct}%)</span>}
                   </span>
                 </div>
                 {budget.budget != null && budget.budget > 0 && (
-                  <div className="mb-2 h-2 overflow-hidden rounded bg-slate-200">
+                  <div className="mb-2 h-2 overflow-hidden rounded-full bg-surface-2">
                     <div
-                      className={`h-full rounded ${(budget.burnPct ?? 0) > 100 ? 'bg-delayed' : 'bg-ontrack'}`}
+                      className={`h-full rounded-full ${(budget.burnPct ?? 0) > 100 ? 'bg-late' : 'bg-brand-700'}`}
                       style={{ width: `${Math.min(budget.burnPct ?? 0, 100)}%` }}
                     />
                   </div>
@@ -104,12 +110,12 @@ export default function DrillDownPanel({ open, code, title, filter, onClose }: P
                   <table className="w-full text-xs">
                     <tbody>
                       {budget.installments.map((it) => (
-                        <tr key={it.id} className="border-t border-slate-200">
-                          <td className="py-1">{it.name}</td>
-                          <td className="py-1 text-right tabular-nums">{money(it.amount)}</td>
-                          <td className="py-1 pl-2 text-slate-500">{fmtDate(it.dueDate)}</td>
-                          <td className="py-1 pl-2">
-                            <span className={it.status === 'PAID' ? 'text-ontrack' : 'text-atrisk'}>
+                        <tr key={it.id} className="border-t border-hair">
+                          <td className="py-1.5">{it.name}</td>
+                          <td className="py-1.5 text-right tabular-nums">{money(it.amount)}</td>
+                          <td className="py-1.5 pl-3 tabular-nums text-ink-3">{fmtDate(it.dueDate)}</td>
+                          <td className="py-1.5 pl-3 text-right">
+                            <span className={`font-medium ${it.status === 'PAID' ? 'text-ok' : 'text-risk'}`}>
                               {it.status === 'PAID' ? '✓ จ่ายแล้ว' : 'รอจ่าย'}
                             </span>
                           </td>
@@ -118,53 +124,45 @@ export default function DrillDownPanel({ open, code, title, filter, onClose }: P
                     </tbody>
                   </table>
                 )}
-                <p className="mt-1 text-[10px] text-slate-400">แก้ไขงบ/งวด ที่หน้า Admin</p>
+                <p className="mt-1.5 text-[11px] text-ink-3">แก้ไขงบ/งวด ที่หน้า Admin</p>
               </div>
             )}
             {/* filter: dept + bucket + clear (req3 — กรอง stage ในหน้า detail) */}
             <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="text-slate-400">แผนก:</span>
+              <span className="w-12 text-ink-3">แผนก:</span>
               {Object.entries(data.byDept).map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => toggle(fDept, k, setFDept)}
-                  className={`rounded px-2 py-1 ${fDept === k ? 'bg-doing text-white' : 'bg-slate-100 hover:bg-slate-200'}`}
-                >
-                  {k} <b>{v}</b>
+                <button key={k} onClick={() => toggle(fDept, k, setFDept)} className={chip(fDept === k)}>
+                  {k} <b className="tabular-nums">{v}</b>
                 </button>
               ))}
             </div>
-            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="text-slate-400">สถานะ:</span>
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="w-12 text-ink-3">สถานะ:</span>
               {Object.entries(byBucket).map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => toggle(fBucket, k, setFBucket)}
-                  className={`rounded px-2 py-1 ${fBucket === k ? 'bg-doing text-white' : 'bg-slate-100 hover:bg-slate-200'}`}
-                >
-                  {k} <b>{v}</b>
+                <button key={k} onClick={() => toggle(fBucket, k, setFBucket)} className={chip(fBucket === k)}>
+                  {k} <b className="tabular-nums">{v}</b>
                 </button>
               ))}
             </div>
             {hasFilter && (
-              <div className="mb-2 flex items-center gap-2 text-xs">
-                {fSection && <span className="rounded bg-doing/10 px-2 py-1">section: {fSection}</span>}
+              <div className="mb-3 flex items-center gap-2 text-xs">
+                {fSection && <span className="rounded-full bg-brand-50 px-2.5 py-1 text-brand-700">section: {fSection}</span>}
                 <button
                   onClick={() => {
                     setFDept(null);
                     setFBucket(null);
                     setFSection(null);
                   }}
-                  className="text-doing hover:underline"
+                  className="btn-ghost btn-sm"
                 >
                   ล้าง filter
                 </button>
               </div>
             )}
-            <table className="w-full text-sm">
+            <table className="tbl">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="py-1.5">ชื่อการ์ด</th>
+                <tr>
+                  <th className="!pl-0">ชื่อการ์ด</th>
                   <th>section</th>
                   <th>กำหนดส่ง</th>
                   <th></th>
@@ -172,20 +170,20 @@ export default function DrillDownPanel({ open, code, title, filter, onClose }: P
               </thead>
               <tbody>
                 {filtered.map((t) => (
-                  <tr key={t.larkTaskGuid} className="border-b border-slate-100">
-                    <td className="max-w-xs py-1.5 pr-2">
+                  <tr key={t.larkTaskGuid}>
+                    <td className="max-w-xs !pl-0">
                       <span className="line-clamp-1">{t.title}</span>
                     </td>
-                    <td className="pr-2 text-xs text-slate-500">
-                      <button className="text-left hover:text-doing hover:underline" onClick={() => setFSection(t.sectionName)}>
+                    <td className="text-xs text-ink-2">
+                      <button className="text-left hover:text-brand-700 hover:underline" onClick={() => setFSection(t.sectionName)}>
                         {t.sectionName}
                       </button>
                     </td>
-                    <td className={`pr-2 text-xs ${t.overdue ? 'font-semibold text-delayed' : 'text-slate-500'}`}>
+                    <td className={`whitespace-nowrap text-xs tabular-nums ${t.overdue ? 'font-semibold text-late' : 'text-ink-2'}`}>
                       {fmtDate(t.dueAt)}
                     </td>
-                    <td>
-                      <a href={t.larkUrl} target="_blank" rel="noreferrer" className="text-xs text-doing hover:underline">
+                    <td className="whitespace-nowrap text-right">
+                      <a href={t.larkUrl} target="_blank" rel="noreferrer" className="text-[13px] font-medium hover:underline">
                         เปิดใน Lark ↗
                       </a>
                     </td>

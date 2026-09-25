@@ -1,26 +1,36 @@
 import type { ProjectStatus } from './types';
 
-// design token §11 — แดง = ปัญหาเท่านั้น
+// design system v0.1 — ค่าเดียวกับ tailwind.config.js (ใช้ตรงใน SVG/Recharts ที่ต้องการ hex)
+// แดง = ปัญหาเท่านั้น
 export const COLORS = {
-  navy: '#1e3a5f',
-  ontrack: '#16a34a',
-  atrisk: '#f59e0b',
-  delayed: '#dc2626',
-  doing: '#2563eb',
-  waiting: '#9ca3af',
-  done: '#16a34a',
-  slate: '#64748b',
+  brand: '#22406B',
+  brandSoft: '#A8B7CC',
+  navy: '#16263F',
+  ink: '#1B1D22',
+  ink2: '#4A4E57',
+  ink3: '#7A7F88',
+  line: '#E2DFD8',
+  hair: '#EFEDE8',
+  surface2: '#F1EFEA',
+  ontrack: '#2F8A5B',
+  atrisk: '#C98A12',
+  delayed: '#B42F26',
+  done: '#3E6394',
+  waiting: '#5E636C',
+  doing: '#22406B',
+  slate: '#7A7F88',
 };
 
-// tint พื้นอ่อน + สีเข้ม + วงแหวน สำหรับ KPI card (executive)
-export type Tone = 'neutral' | 'ontrack' | 'atrisk' | 'delayed' | 'info' | 'waiting';
-export const TONE: Record<Tone, { bg: string; ring: string; icon: string; text: string }> = {
-  neutral: { bg: 'bg-slate-50', ring: 'ring-slate-200', icon: 'bg-slate-100 text-slate-500', text: 'text-slate-900' },
-  info: { bg: 'bg-blue-50', ring: 'ring-blue-100', icon: 'bg-blue-100 text-blue-600', text: 'text-slate-900' },
-  ontrack: { bg: 'bg-emerald-50', ring: 'ring-emerald-100', icon: 'bg-emerald-100 text-emerald-600', text: 'text-emerald-700' },
-  atrisk: { bg: 'bg-amber-50', ring: 'ring-amber-100', icon: 'bg-amber-100 text-amber-600', text: 'text-amber-700' },
-  delayed: { bg: 'bg-red-50', ring: 'ring-red-100', icon: 'bg-red-100 text-red-600', text: 'text-red-700' },
-  waiting: { bg: 'bg-slate-50', ring: 'ring-slate-200', icon: 'bg-slate-100 text-slate-500', text: 'text-slate-600' },
+// จุดสีหน้า label ของ KPI card
+export type Tone = 'neutral' | 'ontrack' | 'atrisk' | 'delayed' | 'info' | 'waiting' | 'done';
+export const TONE_DOT: Record<Tone, string> = {
+  neutral: COLORS.ink,
+  info: COLORS.brand,
+  ontrack: COLORS.ontrack,
+  atrisk: COLORS.atrisk,
+  delayed: COLORS.delayed,
+  waiting: COLORS.waiting,
+  done: COLORS.done,
 };
 
 export function statusColor(s: ProjectStatus): string {
@@ -42,10 +52,28 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
   WAITING: 'Waiting',
 };
 
+// badge สถานะ — fg / bg / border (tailwind class)
+export const STATUS_PILL: Record<ProjectStatus, string> = {
+  ON_TRACK: 'border-ok-bd bg-ok-bg text-ok',
+  AT_RISK: 'border-risk-bd bg-risk-bg text-risk',
+  DELAYED: 'border-late-bd bg-late-bg text-late',
+  DONE: 'border-done-bd bg-done-bg text-done',
+  WAITING: 'border-wait-bd bg-wait-bg text-wait',
+};
+
+// แท่ง Gantt — พื้นอ่อน + ขอบสีสถานะ
+export const STATUS_BAR: Record<ProjectStatus, { bg: string; bd: string }> = {
+  ON_TRACK: { bg: '#E8F4EC', bd: '#BFDFCB' },
+  AT_RISK: { bg: '#FBF3E0', bd: '#EBD9A8' },
+  DELAYED: { bg: '#FBEAE8', bd: '#F0C9C4' },
+  DONE: { bg: '#EAF0F7', bd: '#C6D4E6' },
+  WAITING: { bg: '#F1EFEA', bd: '#DAD6CE' },
+};
+
 // สี bucket (donut/stacked bar งานต่อสถานะ)
 export const BUCKET_COLOR: Record<string, string> = {
   DONE: COLORS.ontrack,
-  IN_PROGRESS: COLORS.doing,
+  IN_PROGRESS: COLORS.brand,
   BACKLOG: COLORS.slate,
   WAITING: COLORS.waiting,
   BLOCKED: COLORS.delayed,
