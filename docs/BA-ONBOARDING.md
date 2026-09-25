@@ -90,6 +90,8 @@ DATABASE_SSL=false
 
 ## 6. Lark (ถ้าแอป BA ต้องดึงข้อมูลจาก Lark เอง)
 
+> ✅ อัปเดต: ใช้ **Lark app ตัวเดียวกับ PM/QA** + เชื่อมแบบ **user OAuth** และเลือกบอร์ดในหน้า admin → ทำตาม [BA-LARK-AUTH.md](BA-LARK-AUTH.md) (ข้อด้านล่างนี้ถูกแทนแล้ว)
+
 - สร้าง **Lark app ของทีม BA เอง** (แยกจาก PM / QA) → ได้ App ID / App Secret
 - redirect URI ที่ต้องลงใน Lark Console (ให้ตรงกับ path callback ในโค้ด) เช่น
   `https://elegancedb.duckdns.org/ba/api/lark/oauth/callback`
@@ -220,16 +222,17 @@ jobs:
 2. บน server:
    ```bash
    cd ~/Dashboard_PM && git pull
-   bash scripts/create-board-db.sh ba          # จด DATABASE_URL ที่ได้
-   cp ba.env.example ba.env
+   cp ba.env.example ba.env                    # ต้องมีไฟล์นี้ก่อน — docker compose ทุกคำสั่งอ่าน env_file ของ service ba
+   bash scripts/create-board-db.sh ba          # จดรหัส ba_app ที่ได้ → ใส่ใน DATABASE_URL
    # Lark app ตัวเดียวกับ PM/QA → ก็อบ App ID / Secret จาก env ของ portal
    for k in LARK_APP_ID LARK_APP_SECRET; do sed -i "s|^$k=.*|$(grep -E "^$k=" server/.env.production | tail -1)|" ba.env; done
    nano ba.env                                 # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL (รหัสจากข้างบน) · TASKLIST_GUID
-   bash scripts/check-lark-tasklist.sh ba.env  # ต้องเห็น ✓ อ่าน tasklist ได้ — ถ้า ✓ แค่ open-sg ให้ตั้ง LARK_HOST=https://open-sg.larksuite.com
    sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa,ba/' .env
    DC="docker compose -f docker-compose.prod.yml"
    $DC pull ba && $DC up -d && $DC logs ba --tail 20
    ```
+   > ⚠️ **แอป BA เวอร์ชันแรกใช้ tenant token → อ่านบอร์ด BA ไม่ได้** (Lark Task เชิญ bot ไม่ได้) → ทีม BA กำลังเปลี่ยนเป็น user OAuth + เลือกบอร์ดในหน้า admin แบบ PM ตาม [BA-LARK-AUTH.md](BA-LARK-AUTH.md) · ระหว่างนี้ขึ้น container ได้ (หน้าเว็บ + ข้อมูลที่ import เปิดได้ แค่ sync ยังไม่ทำงาน)
+   >
    > **Lark app ตัวเดียวกับ PM/QA แต่คนละแบบ token:** PM ใช้ token ของผู้ใช้ (ข้าวกดเชื่อม) · แอป BA ใช้ **tenant_access_token (ตัวตน app/bot)**
    > → เห็นเฉพาะ tasklist ที่ **app ถูกเพิ่มเป็นสมาชิก** และต้องเปิด scope อ่าน Task/Tasklist ใน app (Developer Console → Permissions → publish version ใหม่)
    > ถ้า check ขึ้น "ไม่มีสิทธิ์": Lark → เปิดบอร์ด BA → แชร์/สมาชิก → เพิ่ม app (bot) ของเราเป็นผู้ดู · แล้วรันเช็กใหม่

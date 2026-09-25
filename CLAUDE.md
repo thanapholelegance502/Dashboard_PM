@@ -75,4 +75,5 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/MIGRATION-POC-TO-STAGING.md` — **แผนย้าย** POC → staging (swap env+ingress อย่างเดียว)
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
 - `docs/BA-ONBOARDING.md` — **ส่งทีม BA**: เอาบอร์ด BA ขึ้น `/ba/` · DB `ba` แยก · flow PR/deploy · template CI
+- `docs/BA-LARK-AUTH.md` — **ส่งทีม BA**: เปลี่ยน Lark เป็น user OAuth + เลือกบอร์ดใน admin (แบบ PM)
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)
