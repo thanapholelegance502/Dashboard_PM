@@ -5,7 +5,7 @@ export const BOARDS = [
   { code: 'QA', name: 'QA · Tester', desc: 'บั๊ก · defect · คุณภาพงานเทส', path: '/qa/', kind: 'external' },
   // repo Dashboard_C_level ยังว่าง → ชี้หน้าการเงินในระบบนี้ไปก่อน พอมีแอปค่อยย้ายไป /clevel แบบ QA
   { code: 'CLEVEL', name: 'C-level · การเงิน', desc: 'งบ · งวดเก็บเงิน · cash-flow', path: '/finance', kind: 'internal' },
-  { code: 'BA', name: 'BA', desc: 'requirement · analysis', kind: 'soon' },
+  { code: 'BA', name: 'BA · Requirement', desc: 'requirement · change · customer support', path: '/ba/', kind: 'external' }, // repo Dashboard_BA
   { code: 'UX', name: 'UX/UI', desc: 'design · usability', kind: 'soon' },
 ];
 

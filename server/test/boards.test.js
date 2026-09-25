@@ -20,7 +20,7 @@ describe('normalizeBoards', () => {
   });
   it('code ไม่รู้จัก / บอร์ดเร็ว ๆ นี้ → 400', () => {
     expect(statusOf(() => normalizeBoards(['HR']))).toBe(400);
-    expect(statusOf(() => normalizeBoards(['BA']))).toBe(400);
+    expect(statusOf(() => normalizeBoards(['UX']))).toBe(400);
   });
   it('ไม่ใช่ array → 400', () => {
     expect(statusOf(() => normalizeBoards('PM'))).toBe(400);

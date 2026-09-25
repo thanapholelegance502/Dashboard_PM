@@ -100,6 +100,22 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
 
+  # 📋 บอร์ด BA — แอปจาก repo Dashboard_BA (ทีม BA ดูแลเอง) · ดู docs/BA-ONBOARDING.md
+  # เปิดใช้: COMPOSE_PROFILES=caddy,qa,ba · ตั้งค่าแอปที่ ./ba.env (ดู ba.env.example) · DB = database `ba` (scripts/create-board-db.sh ba)
+  ba:
+    image: ${BA_IMAGE:-ghcr.io/thanapholelegance502/dashboard_ba:latest}
+    restart: unless-stopped
+    profiles: ["ba"]
+    env_file: ./ba.env
+    depends_on:
+      - postgres
+    expose:
+      - "8080"
+    volumes:
+      - ba_config:/app/config   # ไฟล์ import / ตั้งค่าของแอป BA — รอดตอน deploy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
   # 🔄 auto-deploy agent — poll GHCR แล้วเปลี่ยน container ที่ติด label ข้างบนเท่านั้น
   # (postgres ไม่ติด label → ไม่ยุ่ง · watchtower ไม่ update ตัวเอง)
   watchtower:
@@ -127,3 +143,4 @@ volumes:
   caddy_data:
   caddy_config:
   qa_config:
+  ba_config:

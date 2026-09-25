@@ -212,7 +212,7 @@ jobs:
 
 ทำเมื่อ repo BA มี Dockerfile + CI push image แล้ว (รายละเอียดเต็ม: [BOARD-INTEGRATION.md → เพิ่มบอร์ดแผนกใหม่](BOARD-INTEGRATION.md#เพิ่มบอร์ดแผนกใหม่-เช่น-ba-c-level-เมื่อ-repo-มีแอปแล้ว))
 
-1. **PR ใน Dashboard_PM** (ให้ Claude ทำได้):
+1. **PR ใน Dashboard_PM** — ✅ ทำแล้ว (boards.js · nginx `/ba/` · compose service `ba` · `ba.env.example`):
    - `server/src/domain/boards.js` — BA: `kind: 'external'`, `path: '/ba/'`
    - `web/nginx.conf` — ก็อบบล็อก `/_auth/qa` + `/qa/` → `ba` (board=BA, upstream `http://ba:8080`)
    - `docker-compose.prod.yml` — ก็อบ service `qa` → `ba` (profile `ba`, image `ghcr.io/thanapholelegance502/<repo ba>:latest`, `env_file: ./ba.env`, `expose: 8080`, volume `ba_config:/app/config`, label watchtower)
@@ -221,10 +221,16 @@ jobs:
    ```bash
    cd ~/Dashboard_PM && git pull
    bash scripts/create-board-db.sh ba          # จด DATABASE_URL ที่ได้
-   cp ba.env.example ba.env && nano ba.env     # BASE_PATH=/ba · PORT=8080 · DATABASE_URL · DATABASE_SSL=false · ค่า Lark
+   cp ba.env.example ba.env && nano ba.env     # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL · ค่า Lark
    sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa,ba/' .env
    DC="docker compose -f docker-compose.prod.yml"
    $DC pull ba && $DC up -d && $DC logs ba --tail 20
    ```
-3. ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **BA** ให้ทีม · Lark Console: ลง redirect URI ของแอป BA
-4. หลังจากนี้: ข้าว merge PR ใน repo BA → Watchtower เปลี่ยน container `ba` เอง
+3. นำข้อมูลเดิมเข้า **ก่อน** sync จริงรอบแรก (ไฟล์จากทีม BA — มีชื่อจริง ห้ามขึ้น git):
+   ```bash
+   $DC exec ba mkdir -p /app/config/import
+   for f in *.json; do $DC cp "$f" ba:/app/config/import/; done   # snapshot 3 ไฟล์ + options.json
+   $DC exec ba node server/scripts/import-snapshots.js
+   ```
+4. ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **BA** ให้ทีม · เปิด `/ba/admin` → กด "กวาด Task ใหม่" 1 ครั้ง
+5. หลังจากนี้: ข้าว merge PR ใน repo BA → Watchtower เปลี่ยน container `ba` เอง
