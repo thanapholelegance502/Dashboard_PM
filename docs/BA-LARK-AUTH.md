@@ -1,6 +1,7 @@
 # BA-LARK-AUTH — เปลี่ยนการเชื่อม Lark ของแอป BA ให้เหมือน PM (สำหรับทีม BA)
 
 > ส่งให้น้องทีม BA · ทำเป็น PR เข้า `main` ของ `Dashboard_BA` ตามปกติ (ข้าวรีวิว + merge)
+> ✅ ทำแล้ว — Dashboard_BA PR #2 (merge 25 ก.ย. 2026) · ขั้นตอนเปิดใช้บน server: [BA-ONBOARDING.md](BA-ONBOARDING.md) ภาคผนวก
 > อ้างอิงโค้ดที่ใช้งานจริงอยู่แล้วใน Portal: `Dashboard_PM/server/src/lark/auth.js` (repo public อ่านได้)
 
 ## ทำไมต้องเปลี่ยน
