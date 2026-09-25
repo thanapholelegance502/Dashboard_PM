@@ -221,11 +221,18 @@ jobs:
    ```bash
    cd ~/Dashboard_PM && git pull
    bash scripts/create-board-db.sh ba          # จด DATABASE_URL ที่ได้
-   cp ba.env.example ba.env && nano ba.env     # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL · ค่า Lark
+   cp ba.env.example ba.env
+   # Lark app ตัวเดียวกับ PM/QA → ก็อบ App ID / Secret จาก env ของ portal
+   for k in LARK_APP_ID LARK_APP_SECRET; do sed -i "s|^$k=.*|$(grep -E "^$k=" server/.env.production | tail -1)|" ba.env; done
+   nano ba.env                                 # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL (รหัสจากข้างบน) · TASKLIST_GUID
+   bash scripts/check-lark-tasklist.sh ba.env  # ต้องเห็น ✓ อ่าน tasklist ได้ — ถ้า ✓ แค่ open-sg ให้ตั้ง LARK_HOST=https://open-sg.larksuite.com
    sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa,ba/' .env
    DC="docker compose -f docker-compose.prod.yml"
    $DC pull ba && $DC up -d && $DC logs ba --tail 20
    ```
+   > **Lark app ตัวเดียวกับ PM/QA แต่คนละแบบ token:** PM ใช้ token ของผู้ใช้ (ข้าวกดเชื่อม) · แอป BA ใช้ **tenant_access_token (ตัวตน app/bot)**
+   > → เห็นเฉพาะ tasklist ที่ **app ถูกเพิ่มเป็นสมาชิก** และต้องเปิด scope อ่าน Task/Tasklist ใน app (Developer Console → Permissions → publish version ใหม่)
+   > ถ้า check ขึ้น "ไม่มีสิทธิ์": Lark → เปิดบอร์ด BA → แชร์/สมาชิก → เพิ่ม app (bot) ของเราเป็นผู้ดู · แล้วรันเช็กใหม่
 3. นำข้อมูลเดิมเข้า **ก่อน** sync จริงรอบแรก (ไฟล์จากทีม BA — มีชื่อจริง ห้ามขึ้น git):
    ```bash
    $DC exec ba mkdir -p /app/config/import
