@@ -4,6 +4,7 @@ import { prisma } from '../../db/prisma.js';
 import { computeProjectMetrics } from '../../domain/metrics.js';
 import { computeAutoStatus } from '../../domain/status.js';
 import { PROJECT_STATUS, BUCKET } from '../../domain/enums.js';
+import { computeFinance } from '../../domain/finance.js';
 import { isOverdue, daysUntil, todayDateStrBkk } from '../../domain/time.js';
 
 export const pmRouter = Router();
@@ -310,16 +311,15 @@ function buildLarkTaskUrl(guid) {
 }
 
 // GET /api/pm/finance — ภาพรวมการเงิน portfolio (C-level: CFO/CEO)
+// installments[] แบน ๆ ส่งมาด้วย → หน้า Finance เปิด drill-down ได้โดยไม่ยิง API เพิ่ม
+// (สำคัญ: /pm/projects/:code/budget ต้องใช้ board PM — C-level จะโดน 403 ดู index.js)
 pmRouter.get('/finance', async (_req, res, next) => {
   try {
     const now = new Date();
     const projects = await prisma.project.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } });
-    const allInst = await prisma.paymentInstallment.findMany();
-    const byProject = new Map();
-    for (const i of allInst) {
-      if (!byProject.has(i.projectId)) byProject.set(i.projectId, []);
-      byProject.get(i.projectId).push(i);
-    }
+    const installments = await prisma.paymentInstallment.findMany({
+      orderBy: [{ projectId: 'asc' }, { sortOrder: 'asc' }, { id: 'asc' }],
+    });
 
     // status ต่อ project (ใช้ตัดสิน revenue at risk)
     const statusOf = new Map();
@@ -328,60 +328,8 @@ pmRouter.get('/finance', async (_req, res, next) => {
       statusOf.set(p.id, computeProjectMetrics(p, tasks, now).status);
     }
 
-    const totals = { budget: 0, billed: 0, outstanding: 0, planned: 0, unplanned: 0 };
-    const cashflow = {
-      overdue: { count: 0, amount: 0 },
-      d0_30: { count: 0, amount: 0 },
-      d31_60: { count: 0, amount: 0 },
-      d61_90: { count: 0, amount: 0 },
-      d90plus: { count: 0, amount: 0 },
-      noDate: { count: 0, amount: 0 },
-    };
-    const revenueAtRisk = { amount: 0, items: [] };
-    const overdueInstallments = [];
-
-    const projectRows = projects.map((p) => {
-      const inst = byProject.get(p.id) ?? [];
-      const billed = inst.filter((i) => i.status === 'PAID').reduce((a, i) => a + i.amount, 0);
-      const planned = inst.reduce((a, i) => a + i.amount, 0);
-      const outstanding = planned - billed;
-      totals.budget += p.budget ?? 0;
-      totals.billed += billed;
-      totals.planned += planned;
-      totals.outstanding += outstanding;
-      totals.unplanned += (p.budget ?? 0) - planned;
-
-      const status = statusOf.get(p.id);
-      for (const i of inst) {
-        if (i.status === 'PAID') continue;
-        // cash-flow window (งวดที่ยังไม่จ่าย)
-        const d = daysUntil(i.dueDate, now);
-        if (d == null) cashflow.noDate.count++, (cashflow.noDate.amount += i.amount);
-        else if (d < 0) {
-          cashflow.overdue.count++, (cashflow.overdue.amount += i.amount);
-          overdueInstallments.push({ code: p.projectCode, name: i.name, amount: i.amount, dueDate: i.dueDate, overdueDays: -d });
-        } else if (d <= 30) cashflow.d0_30.count++, (cashflow.d0_30.amount += i.amount);
-        else if (d <= 60) cashflow.d31_60.count++, (cashflow.d31_60.amount += i.amount);
-        else if (d <= 90) cashflow.d61_90.count++, (cashflow.d61_90.amount += i.amount);
-        else cashflow.d90plus.count++, (cashflow.d90plus.amount += i.amount);
-        // revenue at risk — งวดที่ผูกกับ project DELAYED
-        if (status === PROJECT_STATUS.DELAYED) {
-          revenueAtRisk.amount += i.amount;
-          revenueAtRisk.items.push({ code: p.projectCode, name: i.name, amount: i.amount, dueDate: i.dueDate });
-        }
-      }
-
-      return {
-        code: p.projectCode, displayName: p.displayName, status,
-        budget: p.budget, billed, outstanding, planned,
-        burnPct: p.budget && p.budget > 0 ? Math.round((billed / p.budget) * 100) : null,
-      };
-    });
-
-    totals.burnPct = totals.budget > 0 ? Math.round((totals.billed / totals.budget) * 100) : null;
-    overdueInstallments.sort((a, b) => b.overdueDays - a.overdueDays);
-
-    res.json({ asOf: now.toISOString(), totals, projects: projectRows, cashflow, revenueAtRisk, overdueInstallments });
+    const result = computeFinance({ projects, installments, statusOf, now });
+    res.json({ asOf: now.toISOString(), ...result });
   } catch (err) {
     next(err);
   }
