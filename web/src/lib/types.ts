@@ -140,6 +140,27 @@ export interface BudgetResult {
 }
 
 export interface FinanceBucket { count: number; amount: number; }
+
+/** ช่วงเวลาของงวดที่ยังไม่จ่าย — ตรงกับ CASHFLOW_BUCKETS ฝั่ง server */
+export type CashflowBucketKey = 'overdue' | 'd0_30' | 'd31_60' | 'd61_90' | 'd90plus' | 'noDate';
+/** 'paid' ไม่เข้า cashflow ใด ๆ แต่ต้องมีใน drawer */
+export type InstallmentBucket = CashflowBucketKey | 'paid';
+
+/** งวดแบน ๆ ทุกโครงการ — ป้อน drill-down หน้า Finance (ยอดเดียวกับที่ใช้คิด KPI) */
+export interface FinanceInstallment {
+  id: number;
+  code: string;
+  name: string;
+  amount: number;
+  dueDate: string | null;
+  status: 'PENDING' | 'PAID';
+  paidAt: string | null;
+  sortOrder: number;
+  bucket: InstallmentBucket;
+  overdueDays: number | null;
+  atRisk: boolean;
+}
+
 export interface FinanceProjectRow {
   code: string;
   displayName: string;
@@ -148,15 +169,22 @@ export interface FinanceProjectRow {
   billed: number;
   outstanding: number;
   planned: number;
+  unplanned: number;
+  overPlanned: number;
   burnPct: number | null;
 }
 export interface FinanceResult {
   asOf: string;
-  totals: { budget: number; billed: number; outstanding: number; planned: number; unplanned: number; burnPct: number | null };
+  totals: {
+    budget: number; billed: number; outstanding: number; planned: number;
+    unplanned: number; overPlanned: number; overPlannedCount: number; noBudgetCount: number;
+    burnPct: number | null;
+  };
   projects: FinanceProjectRow[];
-  cashflow: { overdue: FinanceBucket; d0_30: FinanceBucket; d31_60: FinanceBucket; d61_90: FinanceBucket; d90plus: FinanceBucket; noDate: FinanceBucket };
-  revenueAtRisk: { amount: number; items: Array<{ code: string; name: string; amount: number; dueDate: string | null }> };
-  overdueInstallments: Array<{ code: string; name: string; amount: number; dueDate: string | null; overdueDays: number }>;
+  cashflow: Record<CashflowBucketKey, FinanceBucket>;
+  revenueAtRisk: { amount: number; items: Array<{ id: number; code: string; name: string; amount: number; dueDate: string | null }> };
+  overdueInstallments: Array<{ id: number; code: string; name: string; amount: number; dueDate: string | null; overdueDays: number }>;
+  installments: FinanceInstallment[];
 }
 
 export interface SectionRule {
