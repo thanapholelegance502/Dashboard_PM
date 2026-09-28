@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getPortfolio, getMilestones, getAttention, getTrend, runSyncNow } from '../lib/api';
 import type { Portfolio, Milestone, AttentionItem, TrendResponse, ProjectStatus } from '../lib/types';
 import { fmtDateTime, fmtDate, isStale } from '../lib/format';
@@ -11,6 +12,7 @@ import DonutChart from '../components/DonutChart';
 import TrendLine from '../components/TrendLine';
 import FilterBar, { type Filters } from '../components/FilterBar';
 import DrillDownPanel from '../components/DrillDownPanel';
+import { useAuth } from '../lib/auth';
 
 const TITLE = 'Project Portfolio — Executive Summary';
 const EYEBROW = 'UAT · Go-Live · Timeline · Status';
@@ -27,6 +29,9 @@ export default function PM() {
   const [drill, setDrill] = useState<{ code: string; title: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { user } = useAuth();
+  // /finance ต้องมี board CLEVEL — ไม่มีก็อย่าเสนอลิงก์ที่กดแล้วเจอ 403
+  const canSeeFinance = !!user?.boards?.includes('CLEVEL');
 
   const loadPortfolio = () =>
     getPortfolio({ status: filters.status || undefined, projectCode: filters.projectCode || undefined, asOf: asOf || undefined })
@@ -159,9 +164,16 @@ export default function PM() {
                       <span className="text-ink-3">ต้องการภายใน</span>
                       <span className={`font-semibold tabular-nums ${soon ? 'text-late' : 'text-ink'}`}>{fmtDate(a.neededBy)}</span>
                     </div>
-                    <button onClick={() => openDrill(a.project.projectCode)} className="col-start-2 justify-self-start text-[13px] font-medium text-brand-700 hover:underline sm:col-start-auto sm:justify-self-end">
-                      ดูการ์ด →
-                    </button>
+                    {a.autoKey === 'PAYMENT_OVERDUE' && canSeeFinance ? (
+                      // เรื่องเงิน → พาไปดูงวดจริง ไม่ใช่การ์ด Lark (§12.1 ไล่กลับไปหาที่มาได้)
+                      <Link to={`/finance?drill=p:${a.project.projectCode}`} className="col-start-2 justify-self-start text-[13px] font-medium text-brand-700 hover:underline sm:col-start-auto sm:justify-self-end">
+                        ดูงวด →
+                      </Link>
+                    ) : (
+                      <button onClick={() => openDrill(a.project.projectCode)} className="col-start-2 justify-self-start text-[13px] font-medium text-brand-700 hover:underline sm:col-start-auto sm:justify-self-end">
+                        ดูการ์ด →
+                      </button>
+                    )}
                   </li>
                 );
               })}

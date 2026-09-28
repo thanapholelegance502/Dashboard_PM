@@ -17,6 +17,16 @@ export const CASHFLOW_BUCKETS = Object.freeze([
   'noDate',
 ]);
 
+/**
+ * งวดนี้เลยกำหนดชำระมากี่วัน — null ถ้าจ่ายแล้ว / ไม่มีวันครบกำหนด / ยังไม่ถึงกำหนด
+ * นิยาม "เลยกำหนด" ของทั้งระบบอยู่ที่นี่ที่เดียว (หน้า Finance + CEO Attention ใช้ร่วมกัน)
+ */
+export function overdueDaysOf(installment, now = new Date()) {
+  if (installment.status === 'PAID') return null;
+  const d = daysUntil(installment.dueDate, now);
+  return d != null && d < 0 ? -d : null;
+}
+
 function emptyBucket() {
   return { count: 0, amount: 0 };
 }

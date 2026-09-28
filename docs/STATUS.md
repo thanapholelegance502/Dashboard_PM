@@ -23,6 +23,7 @@
 ### ส่วนเพิ่มตามที่ข้าวขอ
 - **CRUD Section Rules UI** + `recompute` (map section เอง → apply กับ task ทันที ไม่ยิง Lark) — แก้ปัญหา "เพิ่มบอร์ดแล้วข้อมูลมั่ว"
 - **Budget + งวดการเงิน** (Project.budget + PaymentInstallment) — Admin จัดการ + แสดงในหน้า detail
+- **Finance drill-down** — กดแถวโครงการ / งวดเลยกำหนด / แท่งกระแสเงินสด → drawer งวดการเงิน (อ่านอย่างเดียว · URL แชร์ได้)
 - **as-of date** — ดูข้อมูลย้อนหลังจาก snapshot
 - **stage filter** ในหน้า detail (dept/bucket/section)
 - **หน้า Finance (C-level)** — portfolio summary · cash-flow 30/60/90 · revenue at risk · งวดค้างเก็บ
@@ -74,7 +75,7 @@
 ## ⬜ Roadmap ถัดไป (ข้าวเลือกลำดับ)
 
 ### C-level เพิ่มเติม
-- C-4 เชื่องวดค้างเก็บเข้า CEO Attention (ตอนนี้แสดงแค่หน้า Finance)
+- ~~C-4 เชื่องวดค้างเก็บเข้า CEO Attention~~ ✅ autoKey `PAYMENT_OVERDUE` (เลยกำหนด ≥ 3 วัน · DECISION · เตือนต่อแม้โปรเจกต์ DONE) → กด "ดูงวด" เปิด drawer งวดในหน้า Finance
 - C-5 Executive PDF / one-pager export
 
 ### PM มืออาชีพ
