@@ -226,21 +226,20 @@ jobs:
    bash scripts/create-board-db.sh ba          # จดรหัส ba_app ที่ได้ → ใส่ใน DATABASE_URL
    # Lark app ตัวเดียวกับ PM/QA → ก็อบ App ID / Secret จาก env ของ portal
    for k in LARK_APP_ID LARK_APP_SECRET; do sed -i "s|^$k=.*|$(grep -E "^$k=" server/.env.production | tail -1)|" ba.env; done
-   nano ba.env                                 # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL (รหัสจากข้างบน) · TASKLIST_GUID
+   sed -i "s|^CREDENTIAL_ENC_KEY=.*|CREDENTIAL_ENC_KEY=$(openssl rand -base64 32)|" ba.env
+   nano ba.env                                 # NODE_ENV=production (ห้ามว่าง) · DATABASE_URL (รหัสจากข้างบน)
    sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=caddy,qa,ba/' .env
    DC="docker compose -f docker-compose.prod.yml"
    $DC pull ba && $DC up -d && $DC logs ba --tail 20
    ```
-   > ⚠️ **แอป BA เวอร์ชันแรกใช้ tenant token → อ่านบอร์ด BA ไม่ได้** (Lark Task เชิญ bot ไม่ได้) → ทีม BA กำลังเปลี่ยนเป็น user OAuth + เลือกบอร์ดในหน้า admin แบบ PM ตาม [BA-LARK-AUTH.md](BA-LARK-AUTH.md) · ระหว่างนี้ขึ้น container ได้ (หน้าเว็บ + ข้อมูลที่ import เปิดได้ แค่ sync ยังไม่ทำงาน)
-   >
-   > **Lark app ตัวเดียวกับ PM/QA แต่คนละแบบ token:** PM ใช้ token ของผู้ใช้ (ข้าวกดเชื่อม) · แอป BA ใช้ **tenant_access_token (ตัวตน app/bot)**
-   > → เห็นเฉพาะ tasklist ที่ **app ถูกเพิ่มเป็นสมาชิก** และต้องเปิด scope อ่าน Task/Tasklist ใน app (Developer Console → Permissions → publish version ใหม่)
-   > ถ้า check ขึ้น "ไม่มีสิทธิ์": Lark → เปิดบอร์ด BA → แชร์/สมาชิก → เพิ่ม app (bot) ของเราเป็นผู้ดู · แล้วรันเช็กใหม่
+   > Lark Console (app เดียวกับ PM) → Security Settings → Redirect URLs เพิ่ม `https://elegancedb.duckdns.org/ba/api/lark/oauth/callback`
+   > แอป BA เชื่อม Lark แบบ user OAuth แบบเดียวกับ PM (Lark Task เชิญ bot เข้า tasklist ไม่ได้) — รายละเอียด [BA-LARK-AUTH.md](BA-LARK-AUTH.md)
 3. นำข้อมูลเดิมเข้า **ก่อน** sync จริงรอบแรก (ไฟล์จากทีม BA — มีชื่อจริง ห้ามขึ้น git):
    ```bash
    $DC exec ba mkdir -p /app/config/import
    for f in *.json; do $DC cp "$f" ba:/app/config/import/; done   # snapshot 3 ไฟล์ + options.json
    $DC exec ba node server/scripts/import-snapshots.js
    ```
-4. ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **BA** ให้ทีม · เปิด `/ba/admin` → กด "กวาด Task ใหม่" 1 ครั้ง
-5. หลังจากนี้: ข้าว merge PR ใน repo BA → Watchtower เปลี่ยน container `ba` เอง
+4. ตั้งค่า → ผู้ใช้: ติ๊กบอร์ด **BA** ให้ทีม
+5. เปิด `/ba/admin` → **เชื่อม Lark** (บัญชีที่เป็นสมาชิกบอร์ด BA) → **เลือกบอร์ด** → **กวาด Task ใหม่** 1 ครั้ง
+6. หลังจากนี้: ข้าว merge PR ใน repo BA → Watchtower เปลี่ยน container `ba` เอง
