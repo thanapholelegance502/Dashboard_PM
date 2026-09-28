@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getFinance } from '../lib/api';
 import type { CashflowBucketKey, FinanceResult, ProjectStatus } from '../lib/types';
@@ -25,8 +25,23 @@ export default function Finance() {
 
   const drill = useMemo(() => parseDrill(sp), [sp]);
   // เปิด = push (Back ปิด drawer) · ปิด = replace (เปิดปิดรัว ๆ ไม่ถม history)
-  const openDrill = (d: FinanceDrill) => setSp(drillParams(d));
-  const closeDrill = () => setSp({}, { replace: true });
+  // แก้เฉพาะ key ของ drill — param อื่นบน URL ต้องรอด
+  const openDrill = useCallback((d: FinanceDrill) => {
+    setSp((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('inst');
+      for (const [k, v] of Object.entries(drillParams(d))) next.set(k, v);
+      return next;
+    });
+  }, [setSp]);
+  const closeDrill = useCallback(() => {
+    setSp((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('drill');
+      next.delete('inst');
+      return next;
+    }, { replace: true });
+  }, [setSp]);
   const canEdit = user?.role === 'ADMIN' || user?.role === 'PM';
 
   if (err) {
@@ -176,7 +191,11 @@ export default function Finance() {
               {data.projects.map((p) => (
                 <tr
                   key={p.code}
-                  onClick={() => openDrill({ kind: 'project', code: p.code })}
+                  onClick={() => {
+                    // ลากเลือกตัวเลขเพื่อ copy ไม่ใช่การกดดู — ปล่อยผ่าน
+                    if (!window.getSelection()?.isCollapsed) return;
+                    openDrill({ kind: 'project', code: p.code });
+                  }}
                   className="cursor-pointer hover:bg-surface-2"
                 >
                   <td>
