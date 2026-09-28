@@ -1,13 +1,13 @@
 # CLAUDE.md — context สำหรับ AI (อ่านไฟล์นี้ก่อนเริ่มงาน)
 
-> Elegance PMO Dashboard · session ใหม่: ดึง git แล้วอ่านไฟล์นี้ + `docs/STATUS.md` ก่อนลงมือ
+> Elegance PMO Dashboard · **session ใหม่: ดึง git แล้วอ่าน [docs/HANDOFF.md](docs/HANDOFF.md) (สรุปทั้งหมด + ค้างอะไร) → ไฟล์นี้ → `docs/STATUS.md`**
 
 ## โปรเจกต์นี้คืออะไร
 Dashboard บริหารโปรเจกต์หลายแผนก (PM · QA · BA · UX/UI) สำหรับ CEO/CFO + PM
 ดึงข้อมูลจริงจาก **Lark Task API** → ETL → PostgreSQL → REST API → React dashboard
 แทน prototype เดิมบน Genspark · ผู้สั่งงาน: ข้าว (PM, Elegance Consultant)
 
-## สถานะปัจจุบัน (24 ก.ย. 2026) — ละเอียดดู [docs/STATUS.md](docs/STATUS.md)
+## สถานะปัจจุบัน (28 ก.ย. 2026) — ละเอียดดู [docs/STATUS.md](docs/STATUS.md)
 - ✅ **P1 Data Layer** — Lark ETL · OAuth + refresh rotation · snapshot · cron
 - ✅ **PM Dashboard + Admin + Finance** — KPI/Gantt/drill-down · section rules · budget/งวดการเงิน · as-of
 - ✅ **POC ขึ้นจริง** `https://elegancedb.duckdns.org` — Vultr + DuckDNS + Caddy (HTTPS) → [docs/POC-DEPLOY.md](docs/POC-DEPLOY.md)
@@ -15,8 +15,9 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **Portal หลายแผนก** — landing เลือกบอร์ด · สิทธิ์บอร์ดรายคน · บอร์ด QA ที่ `/qa/` (repo Dashboard_Tester) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
 - ✅ **CI/CD ทำงานแล้ว** — merge main → test + build image → GHCR → watchtower บน Vultr deploy เอง (~2–5 นาที)
 - ✅ **Hardening** — session ใน Postgres (H-1) · backup cron ทุกวัน (H-2) · ufw 22/80/443 · เชื่อม Lark ใหม่ผ่านปุ่ม Admin
-- 🆕 **บอร์ด BA** ที่ `/ba/` (repo Dashboard_BA · DB `ba` แยก) — ฝั่ง portal พร้อมแล้ว · เปิดบน server ตาม [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md#ภาคผนวก--ฝั่ง-server-ข้าวทำ-ครั้งเดียว)
-- ⏳ **บอร์ด QA** — ยังไม่เปิดบน server · ทีม tester แก้ repo เองผ่าน PR (ข้าวรีวิว + merge `Main`) → [docs/BOARD-INTEGRATION.md](docs/BOARD-INTEGRATION.md)
+- ✅ **Redesign UI ทั้ง Portal** (Claude Design v0.1) — PR #7 · frontend อย่างเดียว
+- ✅ **บอร์ด QA** `/qa/` (repo Dashboard_Tester, branch `Main`) — เปิดบน server แล้ว + รายงาน Tester ตามช่วงวัน · ค้างฝั่ง tester ดู HANDOFF §4
+- ✅ **บอร์ด BA** `/ba/` (repo Dashboard_BA, branch `main`) — เปิดบน server แล้ว · DB `ba` แยก · Lark user OAuth → [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md)
 - 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
 
@@ -63,6 +64,7 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - refresh token หมุนทุกครั้ง → เขียนทับทันที
 
 ## เอกสาร
+- `docs/HANDOFF.md` — **เริ่ม session ใหม่อ่านก่อน**: ระบบตอนนี้ · repo ทั้งหมด · กติกา · ค้างอะไร · บทเรียน · คำสั่ง server
 - `docs/STATUS.md` — ทำแล้ว/จะทำ/roadmap/blocked-on
 - `docs/ARCHITECTURE.md` — โครงโค้ด, data model, API, Lark
 - `docs/DEV.md` — setup, authorize, test
