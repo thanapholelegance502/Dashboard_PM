@@ -324,6 +324,7 @@ adminRouter.post('/projects/:code/installments', async (req, res, next) => {
       },
     });
     await writeAudit({ appUserId: uid(req), entity: 'PaymentInstallment', entityId: created.id, action: 'CREATE', after: req.body });
+    await recomputeMetricsAndAttention(); // แก้งวด → CEO Attention อัพเดตทันที (C-4)
     res.json(created);
   } catch (e) {
     next(e);
@@ -344,6 +345,7 @@ adminRouter.patch('/installments/:id', async (req, res, next) => {
     if (data.status === 'PENDING') data.paidAt = null;
     const updated = await prisma.paymentInstallment.update({ where: { id }, data });
     await writeAudit({ appUserId: uid(req), entity: 'PaymentInstallment', entityId: id, action: 'UPDATE', before, after: data });
+    await recomputeMetricsAndAttention(); // ติ๊กจ่ายแล้ว → เตือนหายทันที (C-4)
     res.json(updated);
   } catch (e) {
     next(e);
@@ -357,6 +359,7 @@ adminRouter.delete('/installments/:id', async (req, res, next) => {
     if (!before) return res.status(404).json({ error: 'ไม่พบงวด' });
     await prisma.paymentInstallment.delete({ where: { id } });
     await writeAudit({ appUserId: uid(req), entity: 'PaymentInstallment', entityId: id, action: 'DELETE', before });
+    await recomputeMetricsAndAttention(); // C-4
     res.json({ ok: true });
   } catch (e) {
     next(e);
