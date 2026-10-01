@@ -6,6 +6,8 @@ export const BOARDS = [
   // repo Dashboard_C_level ยังว่าง → ชี้หน้าการเงินในระบบนี้ไปก่อน พอมีแอปค่อยย้ายไป /clevel แบบ QA
   { code: 'CLEVEL', name: 'C-level · การเงิน', desc: 'งบ · งวดเก็บเงิน · cash-flow', path: '/finance', kind: 'internal' },
   { code: 'BA', name: 'BA · Requirement', desc: 'requirement · change · customer support', path: '/ba/', kind: 'external' }, // repo Dashboard_BA
+  // อ่าน Google Sheet ของทีม PM อีกสาย ฝั่ง server (ดู docs/YOK-BOARD.md)
+  { code: 'YOK', name: 'PM · Project Executive', desc: 'stage · weekly update · billing · MA', path: '/yok', kind: 'internal' },
   { code: 'UX', name: 'UX/UI', desc: 'design · usability', kind: 'soon' },
 ];
 

@@ -36,6 +36,7 @@
 - frontend อย่างเดียว (API/ข้อมูลเหมือนเดิม) → [DESIGN-BRIEF.md](DESIGN-BRIEF.md) · รูป `docs/design/after/`
 
 ### บอร์ดแผนกบน Portal
+- **YOK** `/yok` (Project Executive ของทีม PM อีกสาย) — อ่าน Google Sheet ฝั่ง server ด้วย service account · ⏳ รอข้าวตั้ง service account + เติมหัวคอลัมน์ → [YOK-BOARD.md](YOK-BOARD.md)
 - **QA** `/qa/` (repo Dashboard_Tester) — ✅ เปิดบน server แล้ว · token Lark ของแอป QA เอง · **รายงาน Tester ตามช่วงวัน** (snapshot รายวัน) · DB ยังเป็น Supabase ของทีม tester
 - **BA** `/ba/` (repo Dashboard_BA) — ✅ เปิดบน server แล้ว (25 ก.ย.) · DB `ba` แยก (user `ba_app`) · Lark user OAuth + เลือกบอร์ดใน `/ba/admin` · sync จ–ศ 08:00/17:00 → [BA-ONBOARDING.md](BA-ONBOARDING.md) · [BA-LARK-AUTH.md](BA-LARK-AUTH.md)
 

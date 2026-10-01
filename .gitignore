@@ -10,6 +10,12 @@ node_modules/
 !*.env.example
 env.text
 
+# service account key (Google Sheets) — .env* ไม่ครอบ *.json
+server/secrets/
+*-sa-key.json
+*.sa.json
+service-account*.json
+
 # build output
 dist/
 build/
