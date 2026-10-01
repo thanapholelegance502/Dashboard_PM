@@ -8,6 +8,7 @@ import { syncRouter } from './api/routes/sync.js';
 import { authRouter } from './api/routes/auth.js';
 import { metaRouter } from './api/routes/meta.js';
 import { pmRouter } from './api/routes/pm.js';
+import { yokRouter } from './api/routes/yok.js';
 import { adminRouter } from './api/routes/admin.js';
 import { startCron } from './jobs/cron.js';
 import { createSessionStore } from './db/sessionStore.js';
@@ -40,7 +41,8 @@ export function createApp() {
   // บอร์ด: /api/pm/finance = C-level · ที่เหลือ = PM (กัน tester ที่มีแค่ QA ยิง API การเงินตรง ๆ)
   const pmBoardGuard = (req, res, next) => requireBoard(req.path.startsWith('/finance') ? 'CLEVEL' : 'PM')(req, res, next);
   app.use('/api/pm', requireAuth, pmBoardGuard, pmRouter);
-  app.use('/api/admin', requireAuth, adminRouter);
+  app.use('/api/yok', requireAuth, requireBoard('YOK'), yokRouter);
+app.use('/api/admin', requireAuth, adminRouter);
 
   app.use(errorHandler);
   return app;

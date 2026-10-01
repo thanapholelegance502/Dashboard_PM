@@ -218,3 +218,45 @@ export interface BoardInfo {
   path?: string;
   kind: 'internal' | 'external' | 'soon'; // external = แอปทีมแผนกที่ nginx วางไว้ใต้ path (เปิดเต็มหน้า)
 }
+
+// ── บอร์ด YOK (อ่าน Google Sheet ฝั่ง server) ─────────────
+export type YokHealth = 'NOT_START' | 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'BLOCKED' | 'COMPLETED';
+/** ชี้กลับไปที่ cell จริงในชีต (§12.1) */
+export interface YokRowRef { tab: string; gid: number | null; row: number }
+export interface YokWarning { tab: string; kind: string; [k: string]: unknown }
+
+export interface YokWeeklyRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; week: string | null; weekStart: string | null; weekEnd: string | null; summary: string | null; risk: string | null }
+export interface YokActionRow { rowRef: YokRowRef; projectId: string | null; topic: string | null; owner: string | null; neededBy: string | null; overdueDays: number | null; status: string | null; done: boolean }
+export interface YokMilestoneRow { rowRef: YokRowRef; projectId: string | null; name: string | null; dueDate: string | null; inDays: number | null; status: string | null }
+export interface YokBillingRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; installment: string | null; amount: number | null; dueDate: string | null; status: string | null; paid: boolean; overdueDays: number | null }
+export interface YokMaRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; client: string | null; startDate: string | null; endDate: string | null; daysLeft: number | null; value: number | null }
+export interface YokPendingRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; client: string | null; value: number | null; note: string | null }
+export interface YokProjectRow { projectId: string; projectName: string | null; stage: string | null; health: YokHealth | null; progressPct: number | null; sources: string[] }
+
+export interface YokDashboard {
+  asOf: string;
+  ageSec: number;
+  stale: boolean;
+  staleReason?: string;
+  degraded?: boolean;
+  sheetUrl: string;
+  tabs: string[];
+  warnings: YokWarning[];
+  sections: {
+    overview: {
+      kpis: { projects: number; openActions: number; overdueBilling: number; maExpiring: number };
+      byHealth: Array<{ key: YokHealth; count: number }>;
+      byStage: Array<{ key: string; count: number }>;
+      projectsIncomplete: boolean;
+    };
+    weeklyUpdate: { items: YokWeeklyRow[] };
+    executiveAction: { items: YokActionRow[]; openCount: number };
+    billing: {
+      totals: { planned: number; billed: number; outstanding: number; overdue: number };
+      counts: { all: number; billed: number; outstanding: number; overdue: number };
+      items: YokBillingRow[];
+    };
+    maTracking: { items: YokMaRow[]; expiringCount: number; expiredCount: number; expiringWithinDays: number };
+    projects: { items: YokProjectRow[]; milestones: YokMilestoneRow[]; pendingKickoff: YokPendingRow[] };
+  };
+}

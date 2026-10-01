@@ -18,6 +18,7 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **Redesign UI ทั้ง Portal** (Claude Design v0.1) — PR #7 · frontend อย่างเดียว
 - ✅ **บอร์ด QA** `/qa/` (repo Dashboard_Tester, branch `Main`) — เปิดบน server แล้ว + รายงาน Tester ตามช่วงวัน · ค้างฝั่ง tester ดู HANDOFF §4
 - ✅ **บอร์ด BA** `/ba/` (repo Dashboard_BA, branch `main`) — เปิดบน server แล้ว · DB `ba` แยก · Lark user OAuth → [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md)
+- 🚧 **บอร์ด YOK** `/yok` — Project Executive (ทีม PM อีกสาย) อ่าน Google Sheet ฝั่ง server · รอตั้ง service account → [docs/YOK-BOARD.md](docs/YOK-BOARD.md)
 - 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
 
@@ -78,4 +79,5 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
 - `docs/BA-ONBOARDING.md` — **ส่งทีม BA**: เอาบอร์ด BA ขึ้น `/ba/` · DB `ba` แยก · flow PR/deploy · template CI
 - `docs/BA-LARK-AUTH.md` — **ส่งทีม BA**: เปลี่ยน Lark เป็น user OAuth + เลือกบอร์ดใน admin (แบบ PM)
+- `docs/YOK-BOARD.md` — **บอร์ด YOK**: ตั้ง Google service account · column mapping · ลำดับเปิดใช้ + ถอด public sharing
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)

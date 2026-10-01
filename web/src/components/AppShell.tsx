@@ -18,6 +18,7 @@ const navItems: { to: string; label: string; board?: string; roles?: string[] }[
   { to: '/', label: 'หน้าแรก' },
   { to: '/pm', label: 'Portfolio', board: 'PM' },
   { to: '/finance', label: 'การเงิน', board: 'CLEVEL' },
+    { to: '/yok', label: 'Project Executive', board: 'YOK' },
   { to: '/admin', label: 'ตั้งค่า', roles: ['ADMIN', 'PM'] }, // VIEWER เข้าหน้าตั้งค่าไม่ได้ (backend 403)
 ];
 
