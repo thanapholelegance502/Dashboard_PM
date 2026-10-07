@@ -49,29 +49,29 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
   }
 
   // ── Weekly Update ────────────────────────────────────────
+  // ‼️ หนึ่งแถวต่อ "สัปดาห์" ไม่ใช่ต่อโครงการ — แท็บนี้ไม่มี Project ID
   const weeklyItems = rowsOf('Weekly_Update').map((r) => ({
     rowRef: ref('Weekly_Update', g('Weekly_Update'), r._row),
-    projectId: parseText(r.projectId),
-    projectName: parseText(r.projectName),
-    week: parseText(r.week),
     weekStart: parseSheetDate(r.weekStart),
-    weekEnd: parseSheetDate(r.weekEnd),
     summary: parseText(r.summary),
-    risk: parseText(r.risk),
   }));
-  // ใหม่สุดขึ้นก่อน — ไม่มีวันที่ไปท้าย
   weeklyItems.sort((a, b) => (b.weekStart ?? '').localeCompare(a.weekStart ?? ''));
 
   // ── Executive Action ─────────────────────────────────────
   const actionItems = rowsOf('Executive_Action').map((r) => {
     const neededBy = parseSheetDate(r.neededBy);
     const statusText = parseText(r.status);
-    const done = statusText != null && /done|complete|closed|เสร็จ|ปิด/i.test(statusText);
+    // สถานะในชีตเป็นไทย: "อนุมัติแล้ว" / "รอตัดสินใจ"
+    const done = statusText != null && /done|complete|closed|อนุมัติ|เสร็จ|ปิด/i.test(statusText);
     return {
       rowRef: ref('Executive_Action', g('Executive_Action'), r._row),
       projectId: parseText(r.projectId),
       topic: parseText(r.topic),
+      options: parseText(r.options),
       owner: parseText(r.owner),
+      impact: parseText(r.impact),
+      decidedAt: parseSheetDate(r.decidedAt),
+      note: parseText(r.note),
       neededBy,
       overdueDays: !done && neededBy ? Math.max(0, -(daysUntil(sheetDateToDate(neededBy), now) ?? 0)) || null : null,
       status: statusText,
@@ -87,37 +87,64 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
     return {
       rowRef: ref('Milestone', g('Milestone'), r._row),
       projectId: parseText(r.projectId),
+      projectName: parseText(r.projectName),
       name: parseText(r.name),
       dueDate,
+      doneDate: parseSheetDate(r.doneDate),
       inDays: dueDate ? daysUntil(sheetDateToDate(dueDate), now) : null,
       status: parseText(r.status),
+      owner: parseText(r.owner),
     };
   });
   milestoneItems.sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
 
-  // ── Project Billing ──────────────────────────────────────
+  // ── Project Billing ──────────────────────────────────
+  // ‼️ 1 แถว = 1 โครงการ (ไม่ใช่ 1 งวด) · ชีตคำนวณเก็บแล้ว/ค้างเก็บมาให้แล้ว
+  //    เราไม่คิดเลขเอง ใช้ของชีตตรง ๆ → เลขตรงกับที่หยกเห็น
   const billingItems = rowsOf('Project_Billing').map((r) => {
-    const dueDate = parseSheetDate(r.dueDate);
-    const statusText = parseText(r.status);
-    const paid = statusText != null && /paid|received|เก็บแล้ว|ชำระแล้ว/i.test(statusText);
-    const d = dueDate ? daysUntil(sheetDateToDate(dueDate), now) : null;
+    const incVat = parseThb(r.amountIncVat);
+    const billed = parseThb(r.billed);
+    const outstanding = parseThb(r.outstanding);
     return {
       rowRef: ref('Project_Billing', g('Project_Billing'), r._row),
       projectId: parseText(r.projectId),
       projectName: parseText(r.projectName),
-      installment: parseText(r.installment),
-      amount: parseThb(r.amount), // null = ไม่ได้กรอก ไม่ใช่ ฿0
+      client: parseText(r.client),
+      systemCount: parseText(r.systemCount),
+      amountExVat: parseThb(r.amountExVat),
+      amountIncVat: incVat,
+      installments: parseThb(r.installments),
+      billed,
+      outstanding,
+      quotationNo: parseText(r.quotationNo),
+      fullyPaid: outstanding != null && outstanding === 0,
+    };
+  });
+  const sum = (arr, k) => arr.reduce((a, b) => a + (b[k] ?? 0), 0);
+  const withOutstanding = billingItems.filter((b) => (b.outstanding ?? 0) > 0);
+
+  // งวดชำระรายงวด (ตารางที่ 2 ของแท็บเดียวกัน) — 1 แถว = 1 งวด
+  const scheduleItems = rowsOf('Billing_Schedule').map((r) => {
+    const dueDate = parseSheetDate(r.dueDate);
+    const paid = parseThb(r.paid) === 1;
+    const d = dueDate ? daysUntil(sheetDateToDate(dueDate), now) : null;
+    return {
+      rowRef: ref('Billing_Schedule', g('Project_Billing'), r._row),
+      projectId: parseText(r.projectId),
+      installmentNo: parseThb(r.installmentNo),
+      amountExVat: parseThb(r.amountExVat),
+      vat: parseThb(r.vat),
+      amountIncVat: parseThb(r.amountIncVat),
       dueDate,
-      status: statusText,
+      invoiceDate: parseSheetDate(r.invoiceDate),
+      paidDate: parseSheetDate(r.paidDate),
       paid,
       overdueDays: !paid && d != null && d < 0 ? -d : null,
     };
   });
-  const billedItems = billingItems.filter((b) => b.paid);
-  const outstandingItems = billingItems.filter((b) => !b.paid);
-  const overdueBilling = outstandingItems.filter((b) => b.overdueDays != null);
-  const sum = (arr) => arr.reduce((a, b) => a + (b.amount ?? 0), 0);
-  const noAmount = billingItems.filter((b) => b.amount == null).length;
+  scheduleItems.sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
+  const overdueSchedule = scheduleItems.filter((x) => x.overdueDays != null);
+  const noAmount = billingItems.filter((b) => b.amountIncVat == null).length;
   if (noAmount) addWarn('Project_Billing', 'missingAmount', { count: noAmount });
 
   // ── MA Tracking ──────────────────────────────────────────
@@ -127,11 +154,15 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
       rowRef: ref('MA_Tracking', g('MA_Tracking'), r._row),
       projectId: parseText(r.projectId),
       projectName: parseText(r.projectName),
-      client: parseText(r.client),
       startDate: parseSheetDate(r.startDate),
       endDate,
+      duration: parseText(r.duration),
       daysLeft: endDate ? daysUntil(sheetDateToDate(endDate), now) : null,
+      maType: parseText(r.maType),
+      projectValue: parseThb(r.projectValue),
       value: parseThb(r.value),
+      payStatus: parseText(r.payStatus),
+      note: parseText(r.note),
     };
   });
   maItems.sort((a, b) => (a.endDate ?? '9999').localeCompare(b.endDate ?? '9999'));
@@ -139,12 +170,11 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
   const maExpired = maItems.filter((m) => m.daysLeft != null && m.daysLeft < 0);
 
   // ── Pending Kickoff ──────────────────────────────────────
+  // ‼️ ยังไม่เปิดโครงการ จึงไม่มี Project ID
   const pendingItems = rowsOf('Pending_Kickoff').map((r) => ({
     rowRef: ref('Pending_Kickoff', g('Pending_Kickoff'), r._row),
-    projectId: parseText(r.projectId),
     projectName: parseText(r.projectName),
     client: parseText(r.client),
-    value: parseThb(r.value),
     note: parseText(r.note),
   }));
 
@@ -159,7 +189,7 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
     if (name && !p.projectName) p.projectName = name;
     if (!p.sources.includes(src)) p.sources.push(src);
   };
-  for (const w of weeklyItems) seed(w.projectId, w.projectName, 'Weekly_Update');
+  for (const c of rowsOf('Config')) seed(parseText(c.projectTab), null, 'Config');
   for (const b of billingItems) seed(b.projectId, b.projectName, 'Project_Billing');
   for (const m of maItems) seed(m.projectId, m.projectName, 'MA_Tracking');
   for (const m of milestoneItems) seed(m.projectId, null, 'Milestone');
@@ -171,6 +201,7 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
   // stage/health เติมได้เมื่อรู้แท็บรายโครงการแล้ว — ตอนนี้ยังว่าง จึงไม่ยืนยันตัวเลข
   const byHealth = tally(projectItems, (p) => p.health);
   const byStage = tally(projectItems, (p) => p.stage);
+  for (const x of scheduleItems) seed(x.projectId, null, 'Billing_Schedule');
   const projectsIncomplete = projectItems.every((p) => p.stage == null && p.health == null);
   if (projectsIncomplete && projectItems.length) {
     addWarn('Config', 'projectDetailPending', { note: 'ยังไม่ได้เชื่อมแท็บรายโครงการ — stage/health ยังว่าง' });
@@ -183,7 +214,8 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
         kpis: {
           projects: projectItems.length,
           openActions: openActions.length,
-          overdueBilling: overdueBilling.length,
+          outstandingProjects: withOutstanding.length,
+          overdueInstallments: overdueSchedule.length,
           maExpiring: maExpiring.length,
         },
         byHealth: [...byHealth].map(([k, v]) => ({ key: k, count: v.length })),
@@ -194,18 +226,21 @@ export function computeYokBoard({ tabs, gidOf = new Map(), now = new Date() }) {
       executiveAction: { items: actionItems, openCount: openActions.length },
       billing: {
         totals: {
-          planned: sum(billingItems),
-          billed: sum(billedItems),
-          outstanding: sum(outstandingItems),
-          overdue: sum(overdueBilling),
+          exVat: sum(billingItems, 'amountExVat'),
+          incVat: sum(billingItems, 'amountIncVat'),
+          billed: sum(billingItems, 'billed'),
+          outstanding: sum(billingItems, 'outstanding'),
         },
         counts: {
           all: billingItems.length,
-          billed: billedItems.length,
-          outstanding: outstandingItems.length,
-          overdue: overdueBilling.length,
+          fullyPaid: billingItems.filter((b) => b.fullyPaid).length,
+          withOutstanding: withOutstanding.length,
+          installments: scheduleItems.length,
+          overdueInstallments: overdueSchedule.length,
         },
+        overdueAmount: sum(overdueSchedule, 'amountIncVat'),
         items: billingItems,
+        schedule: scheduleItems,
       },
       maTracking: {
         items: maItems,

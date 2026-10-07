@@ -44,7 +44,11 @@ export function parseSheetDate(v) {
   const s = String(v).trim();
   if (!s) return null;
 
-  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]|$)/);
+  // gviz คืนวันที่เป็น "Date(2026,8,28)" — ‼️ เดือนนับจาก 0 (8 = ก.ย.)
+  let m = s.match(/^Date\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return ymd(Number(m[1]), Number(m[2]) + 1, Number(m[3]));
+
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]|$)/);
   if (m) return ymd(Number(m[1]), Number(m[2]), Number(m[3]));
 
   // day-first เสมอ

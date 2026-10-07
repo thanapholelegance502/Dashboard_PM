@@ -39,7 +39,7 @@ export const getDrilldown = (code: string, f: { dept?: string; bucket?: string; 
 
 // ── บอร์ด YOK ───────────────────────────────────────
 export const getYokDashboard = () => req<YokDashboard>(`/yok/dashboard`);
-export const refreshYok = () => req<{ ok: boolean }>(`/yok/refresh`, { method: 'POST' });
+export const refreshYok = () => req<{ ok: boolean; error?: string }>(`/yok/refresh`, { method: 'POST' });
 
 // ── Auth ────────────────────────────────────────────
 export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[] }

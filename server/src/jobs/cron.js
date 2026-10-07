@@ -3,6 +3,8 @@ import cron from 'node-cron';
 import { env } from '../config/env.js';
 import { runSync } from '../etl/runSync.js';
 import { writeSnapshot } from '../etl/snapshot.js';
+import { isYokEnabled } from '../config/env.js';
+import { runYokSync } from '../sheets/yokSource.js';
 
 export function startCron() {
   const opts = { timezone: 'Asia/Bangkok' };
@@ -33,6 +35,24 @@ export function startCron() {
     },
     opts
   );
+
+  // บอร์ด YOK — กวาด Google Sheet คนละเวลากับ Lark (09:00/17:00)
+  if (isYokEnabled()) {
+    for (const [label, expr] of [['เช้า', env.yokCronMorning], ['เย็น', env.yokCronEvening]]) {
+      cron.schedule(
+        expr,
+        async () => {
+          try {
+            await runYokSync({ trigger: 'CRON' });
+          } catch (err) {
+            console.error(`[cron yok ${label}] ล้มเหลว:`, err.message);
+          }
+        },
+        opts
+      );
+    }
+    console.log(`[cron] yok: morning="${env.yokCronMorning}" evening="${env.yokCronEvening}"`);
+  }
 
   console.log(`[cron] ตั้งเวลา: morning="${env.cronMorning}" evening="${env.cronEvening}" (Asia/Bangkok)`);
 }

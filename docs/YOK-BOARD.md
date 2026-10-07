@@ -17,65 +17,80 @@
 
 ---
 
-## 2. ตั้งค่า service account (ข้าวทำเอง ครั้งเดียว)
+## 2. ตั้งค่า (โหมดปัจจุบัน: gviz — ไม่ต้องต่อ Google API)
 
-### Google Cloud
-1. `console.cloud.google.com` → ตัวเลือก project บนแถบบน → **New Project** ชื่อ `elegance-pmo-sheets` → Create
-   *(ไม่ต้องผูกบัตร — Sheets API ฟรี)*
-2. **APIs & Services → Library** → ค้น `Google Sheets API` → **Enable**
-3. **APIs & Services → Credentials** → **+ Create credentials** → **Service account**
-4. ชื่อ `pmo-sheets-reader` → Create and continue → **ข้ามขั้น "Grant this service account access to project" ทั้งขั้น** → Done
-   *(สิทธิ์มาจากการแชร์ชีต ไม่ใช่ IAM — SA ต้องไม่มี role ใด ๆ เลย)*
-5. คลิก `pmo-sheets-reader` → แท็บ **Keys** → Add key → Create new key → **JSON** → Create
-   ⚠️ **Google ไม่เก็บสำเนา — ไฟล์ที่ดาวน์โหลดคือก๊อปเดียว**
-6. copy อีเมล: `pmo-sheets-reader@elegance-pmo-sheets.iam.gserviceaccount.com`
-
-### ชีต (หยกหรือข้าวที่มีสิทธิ์แก้)
-7. เปิดชีต → **Share** → วางอีเมล SA → **Viewer** → **เอาติ๊ก "Notify people" ออก** (SA ไม่มีกล่องจดหมาย) → Share
-8. 🔴 **ยังห้ามแตะ "Anyone with the link"** — นั่นคือขั้นสุดท้าย (§5)
-
-### เอา key ขึ้น server (ห้ามผ่าน git ห้ามผ่านแชท)
-```bash
-scp pmo-sheets-reader-xxxx.json root@<vultr>:/opt/pmo/server/secrets/yok-sa.json
-ssh root@<vultr> 'chmod 600 /opt/pmo/server/secrets/yok-sa.json && chown root:root /opt/pmo/server/secrets/yok-sa.json'
-```
-`server/.env.production` เพิ่ม:
+`server/.env.production`:
 ```dotenv
 YOK_SHEET_ID=<id ของชีต>
-GOOGLE_SA_KEY_FILE=/run/secrets/yok-sa.json
-# YOK_CACHE_TTL_MS=60000   # ไม่ใส่ก็ได้ default 60 วิ
+YOK_SOURCE=gviz            # default · ไม่ต้องมี credential
+# YOK_CRON_MORNING=0 9 * * *
+# YOK_CRON_EVENING=0 17 * * *
 ```
-`docker-compose.prod.yml` service `server` เพิ่ม volume:
-```yaml
-      - ./server/secrets/yok-sa.json:/run/secrets/yok-sa.json:ro
-```
-9. **ลบไฟล์ JSON ออกจาก Downloads และจากทุกแชทที่มันผ่าน**
+แค่นี้ · ไม่ต้องสมัคร Google Cloud ไม่ต้องมี key
 
-> ทางสำรองถ้า mount ไม่สะดวก: `GOOGLE_SA_KEY_B64=<base64 ของไฟล์ทั้งไฟล์>` (บรรทัดเดียว ไม่ต้อง escape)
-> **ห้าม**ใช้ `GOOGLE_SA_PRIVATE_KEY` ที่มี `\n` (พังเงียบเป็น `ERR_OSSL_UNSUPPORTED`) และ **ห้าม**ใช้ ADC (บน VM จะ fallback ไป metadata server เงียบ ๆ = ใช้ตัวตนผิดโดยดูเหมือนทำงานได้)
+### 🔴 ข้อแลกเปลี่ยนของโหมด gviz
+gviz คือ endpoint เดียวกับที่เว็บเดิมของหยกใช้ — **ทำงานได้เฉพาะตอนชีตแชร์เป็น "anyone with the link"**
+
+แปลว่า **ชีตต้องเปิดสาธารณะต่อไป** → ใครรู้ sheet ID ก็ยังดึงข้อมูลดิบจาก Google ได้ตรง ๆ โดยไม่ต้องผ่าน Portal เลย · รูที่ตั้งใจจะปิดยังเปิดอยู่
+
+ข้อดีที่ได้จริง: รวมบอร์ดอยู่ที่เดียว · อยู่หลัง Lark SSO + สิทธิ์รายคน · ข้อมูลเก็บลง Postgres ของเรา (Google ล่มหน้าไม่ว่าง)
+
+### วิธีปิดชีตจริง (โหมด api) — เมื่อพร้อม
+ต้องมี Google service account · เปลี่ยน `YOK_SOURCE=api` แล้วใส่ key · **โค้ดพร้อมอยู่แล้ว ไม่ต้องเขียนใหม่**
+
+1. `console.cloud.google.com` → New Project `elegance-pmo-sheets` (ไม่ต้องผูกบัตร Sheets API ฟรี)
+2. APIs & Services → Library → `Google Sheets API` → **Enable**
+3. Credentials → Create credentials → **Service account** ชื่อ `pmo-sheets-reader`
+4. **ข้ามขั้น "Grant this service account access to project" ทั้งขั้น** — สิทธิ์มาจากการแชร์ชีต ไม่ใช่ IAM
+5. เข้า SA → **Keys** → Add key → Create new key → **JSON** · **Google ไม่เก็บสำเนา**
+6. ชีต → Share → วางอีเมล SA → **Viewer** → เอาติ๊ก Notify people ออก
+7. `scp` key ไป `/opt/pmo/server/secrets/yok-sa.json` → `chmod 600` · เพิ่ม volume `:ro` ใน `docker-compose.prod.yml`
+8. env: `YOK_SOURCE=api` + `GOOGLE_SA_KEY_FILE=/run/secrets/yok-sa.json`
+9. ทดสอบว่า `/yok` ยังขึ้นข้อมูล → **ค่อยถอด "Anyone with the link" ออกจากชีต**
+10. ลบไฟล์ JSON จาก Downloads และจากทุกแชทที่มันผ่าน
+
+⚠️ ขั้น 9 คือขั้นที่ปิดรูจริง · **เว็บเดิมของหยกจะพังทันทีตอนนั้น** หยกต้องปิดเว็บ ไม่งั้นกลายเป็นหน้าพังสาธารณะที่ยังโฆษณา sheet ID อยู่
+⚠️ ถอด public sharing หยุดการเข้าถึงในอนาคต **ไม่ได้เรียกคืนของที่ถูกดึงไปแล้ว**
+
+> ห้ามใช้ `GOOGLE_SA_PRIVATE_KEY` ที่มี `\n` (พังเงียบเป็น `ERR_OSSL_UNSUPPORTED`) · ห้ามใช้ ADC (บน VM จะ fallback ไป metadata server เงียบ ๆ)
 
 ---
 
-## 3. เติมหัวคอลัมน์ (ทำหลังขั้น 2 เสร็จ)
+## 3. การกวาดข้อมูล
 
-```bash
-cd server && npm run sheets:headers
-```
-พิมพ์ชื่อแท็บ + **แถวหัวตารางอย่างเดียว ไม่แตะแถวข้อมูล** (ชีตมีชื่อลูกค้าจริง — MASTER §12.5)
+cron **09:00 / 17:00** (Asia/Bangkok) → เขียนลงตาราง `YokSnapshot` ทุกรอบ
+หน้าเว็บอ่าน **snapshot ที่สำเร็จล่าสุด** เสมอ → restart / deploy / Google ล่ม แล้วหน้าไม่ว่าง (MASTER §12.4)
+รอบที่ล้มเก็บไว้เป็นแถว `ok=false` **ไม่ทับรอบที่สำเร็จ** และหน้าเว็บขึ้นแถบแดงบอกว่ารอบล่าสุดล้ม
 
-เอาผลไปเติม `server/src/sheets/mapping.js` แล้วเปลี่ยน `headerRow: 'auto'` เป็นเลขแถวจริง
+กวาดเองทันที: ปุ่ม **"ดึงข้อมูลใหม่"** มุมขวาบน (ADMIN/PM) หรือ `POST /api/yok/refresh`
 
-**`mapping.js` เป็นที่เดียวในโค้ดทั้งหมดที่ชื่อหัวคอลัมน์ปรากฏเป็น string** — หยก rename คอลัมน์เมื่อไหร่ เพิ่ม alias ตรงนั้นบรรทัดเดียว ไม่ต้องแก้ที่อื่น
-
-### 4 ข้อที่ต้องถามหยก (ดูจากหัวตารางไม่ได้)
-| # | คำถาม | กระทบอะไร |
+### โครงสร้างชีตที่สำรวจแล้ว (7 แท็บ)
+| แท็บ | หัวตารางแถว | หมายเหตุ |
 |---|---|---|
-| 1 | `Config` คอลัมน์ J คืออะไร | รายชื่อโครงการ + แท็บรายโครงการ |
-| 2 | `Project_Billing` 1 แถว = 1 งวด หรือ 1 โครงการ | หน้าตา section การเงิน |
-| 3 | แท็บรายโครงการตั้งชื่อยังไง (`loadSheet(tab)` — Project ID หรือ Project Name) | ขั้นตอน/สถานะรายโครงการ |
-| 4 | คอลัมน์ % เก็บเป็น `0.75` หรือ `75` | ถ้าปนกันในคอลัมน์เดียว เดาอัตโนมัติไม่ได้ |
+| `Config` | 1 | คอลัมน์ J "ชื่อแท็บโครงการ" = **ทะเบียนโครงการจริง** (PJ01…PJ18) |
+| `Weekly_Update` | 2 | **1 แถวต่อสัปดาห์ ไม่ใช่ต่อโครงการ** — ไม่มี Project ID |
+| `Milestone` | 0 | หัว "วันที่คาดว่าจะเสร็จ" อยู่ index 4 แต่ข้อมูลอยู่ index 3 (merged เลื่อน) |
+| `Executive_Action` | 0 | สถานะเป็นไทย — "อนุมัติแล้ว" = ปิดเรื่อง |
+| `Pending_Kickoff` | 0 | ดีลที่ยังไม่เปิดโครงการ — **ไม่มี Project ID** |
+| `Project_Billing` | 2 | **มี 2 ตารางซ้อนกัน** (ดูข้างล่าง) |
+| `MA_Tracking` | 2 | คอลัมน์หัวว่างหลายตัว |
 
-**ระหว่างที่ยังไม่รู้ข้อ 1/3:** หน้าบอร์ดประกอบรายชื่อโครงการจาก `projectId` ที่ปรากฏในแท็บอื่น และขึ้นหมายเหตุไว้ว่าขั้นตอน/สถานะยังว่าง — ไม่แกล้งว่ามีข้อมูล
+### ‼️ `Project_Billing` มี 2 ตารางในแท็บเดียว
+ตารางที่ 1 (สรุปรายโครงการ) → banner `PROJECT PAYMENT SCHEDULE` คั่น → ตารางที่ 2 (งวดชำระรายงวด)
+อ่านรวมกัน = **นับเงินซ้ำ** · โค้ดตัดด้วย regex ของ banner ไม่ใช่เลขแถว (`stopWhen` / `startAfter` ใน `mapping.js`) → หยกแทรกแถวข้างบนแล้วไม่พัง
+
+### คอลัมน์หัวว่าง (merged cell — gviz ไม่คืน label)
+`mapping.js` ตรึง index ด้วย `col: N` **พร้อมหลักฐานกำกับทุกตัว ไม่ได้เดา**:
+- Billing: `[4] × 1.07 = [5]` (ก่อน VAT / รวม VAT) · `[7] + [8] = [5]` (เก็บแล้ว / ค้างเก็บ)
+- งวด: `[6] + [7] = [8]` ทุกแถว (ก่อน VAT + VAT = รวม VAT)
+- MA: `[6]` = มูลค่าโครงการ (ตรงกับ Billing ของ project เดียวกัน) · `[8] = [6] × 12%` ตรงกับหมายเหตุในชีต
+
+**ยืนยันอิสระ:** ยอด `ค้างเก็บ` รวมที่คำนวณได้ = **฿3,480,289.70** ตรงเป๊ะกับตัวเลขที่หยกเขียนไว้เองในหัวตารางชีต
+
+🔴 **`col` เพี้ยนเงียบ ๆ ถ้าหยกแทรก/ลบคอลัมน์** → ขอให้หยกใส่หัวตารางให้ครบ แล้วย้ายมาใช้ alias
+
+### ที่ยังไม่ได้ทำ
+แท็บรายโครงการ (`PJ01`…`PJ18`) ยังไม่ได้อ่าน → **stage / สถานะรายโครงการยังว่าง** และหน้าเว็บขึ้นหมายเหตุบอกตรง ๆ ไม่แกล้งว่ามีข้อมูล
 
 ---
 
@@ -113,28 +128,17 @@ web/src/components/StageFunnel.tsx · YokHealthBadge.tsx
 
 ---
 
-## 5. ลำดับเปิดใช้ (ไม่มีจังหวะไหนที่ไม่มี dashboard ใช้)
+## 5. ลำดับเปิดใช้
 
-| # | ทำอะไร | ระหว่างทาง | ปิดรูหรือยัง |
-|---|---|---|---|
-| 1 | ตั้ง service account + แชร์ชีตให้ (ยังไม่ถอด public) | เว็บหยกปกติ | ยัง |
-| 2 | `npm run sheets:headers` → เติม `mapping.js` | ปกติ | ยัง |
-| 3 | deploy → ติ๊กสิทธิ์ `YOK` ให้หยก + ผู้บริหาร | **สองที่พร้อมกัน** | ยัง |
-| 4 | หยกไล่เทียบตัวเลขทีละ section แล้วเซ็นรับ | สองที่พร้อมกัน | ยัง |
-| 5 | **ชีต → Share → "Anyone with the link" → Restricted** | `/yok` ปกติ · เว็บเดิมพัง (ตั้งใจ) | **ปิดแล้ว** |
-| 6 | หยกปิด/redirect เว็บเดิม | — | ปิดครบ |
+| # | ทำอะไร | ปิดรูหรือยัง |
+|---|---|---|
+| 1 | ใส่ `YOK_SHEET_ID` ใน `server/.env.production` → `up -d server` | ยัง |
+| 2 | กด "ดึงข้อมูลใหม่" ในหน้า `/yok` (หรือรอ cron 09:00/17:00) | ยัง |
+| 3 | ติ๊กสิทธิ์ `YOK` ให้หยก + ผู้บริหาร | ยัง |
+| 4 | หยกไล่เทียบตัวเลขกับเว็บเดิมทีละ section แล้วเซ็นรับ | ยัง |
+| 5 | **ย้ายไปโหมด api (§2) แล้วถอด public sharing** | **ปิดแล้ว** |
 
-**ขั้นที่ปิดรูจริงคือ 5** — 1–4 คือการเตรียมให้ 5 ทำได้โดยไม่พัง · **หยุดที่ 4 แล้วไม่ทำ 5 = ยังไม่ได้แก้อะไร**
-
-ขั้น 4 เผื่อเวลาจริงหลายวัน — เป็นโอกาสเดียวที่จะจับวันที่สลับวัน/เดือน หรือ % ผิด scale ก่อนของเดิมหายไป
-
-ตรวจทันทีหลังขั้น 5: `/yok` ยังโหลดได้ (SA ยังมีสิทธิ์ Viewer) · เปิด gviz URL ใน incognito → ต้องได้ 401/404
-
-**rollback:** ขั้น 1–4 ย้อนด้วย deploy เดิม · ขั้น 5 ย้อนด้วยเปิดแชร์กลับ 1 คลิก · **ห้ามลบเว็บเดิมจนกว่า `/yok` จะนิ่ง 1–2 สัปดาห์**
-
-⚠️ **ถอด public sharing หยุดการเข้าถึงในอนาคต ไม่ได้เรียกคืนของที่ถูกเอาไปแล้ว** — ชีตเปิดสาธารณะมาระยะหนึ่ง ใครดึงไปแล้วก็มีอยู่ · เป็นเหตุผลที่ไม่ควรปล่อยขั้น 4 ยาวเป็นสัปดาห์
-
----
+ขั้น 1–4 ใช้เวลาไม่กี่นาที · **ขั้น 5 คือขั้นเดียวที่แก้ปัญหาความปลอดภัย** — หยุดที่ 4 = ยังไม่ได้ปิดอะไร
 
 ## 6. ดูแลต่อ
 

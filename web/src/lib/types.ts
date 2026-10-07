@@ -225,16 +225,20 @@ export type YokHealth = 'NOT_START' | 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'BLOC
 export interface YokRowRef { tab: string; gid: number | null; row: number }
 export interface YokWarning { tab: string; kind: string; [k: string]: unknown }
 
-export interface YokWeeklyRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; week: string | null; weekStart: string | null; weekEnd: string | null; summary: string | null; risk: string | null }
-export interface YokActionRow { rowRef: YokRowRef; projectId: string | null; topic: string | null; owner: string | null; neededBy: string | null; overdueDays: number | null; status: string | null; done: boolean }
-export interface YokMilestoneRow { rowRef: YokRowRef; projectId: string | null; name: string | null; dueDate: string | null; inDays: number | null; status: string | null }
-export interface YokBillingRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; installment: string | null; amount: number | null; dueDate: string | null; status: string | null; paid: boolean; overdueDays: number | null }
-export interface YokMaRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; client: string | null; startDate: string | null; endDate: string | null; daysLeft: number | null; value: number | null }
-export interface YokPendingRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; client: string | null; value: number | null; note: string | null }
+export interface YokWeeklyRow { rowRef: YokRowRef; weekStart: string | null; summary: string | null }
+export interface YokActionRow { rowRef: YokRowRef; projectId: string | null; topic: string | null; options: string | null; owner: string | null; impact: string | null; neededBy: string | null; decidedAt: string | null; overdueDays: number | null; status: string | null; note: string | null; done: boolean }
+export interface YokMilestoneRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; name: string | null; dueDate: string | null; doneDate: string | null; inDays: number | null; status: string | null; owner: string | null }
+/** 1 แถว = 1 โครงการ (ชีตคำนวณเก็บแล้ว/ค้างเก็บมาให้แล้ว) */
+export interface YokBillingRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; client: string | null; systemCount: string | null; amountExVat: number | null; amountIncVat: number | null; installments: number | null; billed: number | null; outstanding: number | null; quotationNo: string | null; fullyPaid: boolean }
+/** 1 แถว = 1 งวดชำระ */
+export interface YokScheduleRow { rowRef: YokRowRef; projectId: string | null; installmentNo: number | null; amountExVat: number | null; vat: number | null; amountIncVat: number | null; dueDate: string | null; invoiceDate: string | null; paidDate: string | null; paid: boolean; overdueDays: number | null }
+export interface YokMaRow { rowRef: YokRowRef; projectId: string | null; projectName: string | null; startDate: string | null; endDate: string | null; duration: string | null; daysLeft: number | null; maType: string | null; projectValue: number | null; value: number | null; payStatus: string | null; note: string | null }
+export interface YokPendingRow { rowRef: YokRowRef; projectName: string | null; client: string | null; note: string | null }
 export interface YokProjectRow { projectId: string; projectName: string | null; stage: string | null; health: YokHealth | null; progressPct: number | null; sources: string[] }
 
 export interface YokDashboard {
   asOf: string;
+  source?: string;
   ageSec: number;
   stale: boolean;
   staleReason?: string;
@@ -244,7 +248,7 @@ export interface YokDashboard {
   warnings: YokWarning[];
   sections: {
     overview: {
-      kpis: { projects: number; openActions: number; overdueBilling: number; maExpiring: number };
+      kpis: { projects: number; openActions: number; outstandingProjects: number; overdueInstallments: number; maExpiring: number };
       byHealth: Array<{ key: YokHealth; count: number }>;
       byStage: Array<{ key: string; count: number }>;
       projectsIncomplete: boolean;
@@ -252,9 +256,11 @@ export interface YokDashboard {
     weeklyUpdate: { items: YokWeeklyRow[] };
     executiveAction: { items: YokActionRow[]; openCount: number };
     billing: {
-      totals: { planned: number; billed: number; outstanding: number; overdue: number };
-      counts: { all: number; billed: number; outstanding: number; overdue: number };
+      totals: { exVat: number; incVat: number; billed: number; outstanding: number };
+      counts: { all: number; fullyPaid: number; withOutstanding: number; installments: number; overdueInstallments: number };
+      overdueAmount: number;
       items: YokBillingRow[];
+      schedule: YokScheduleRow[];
     };
     maTracking: { items: YokMaRow[]; expiringCount: number; expiredCount: number; expiringWithinDays: number };
     projects: { items: YokProjectRow[]; milestones: YokMilestoneRow[]; pendingKickoff: YokPendingRow[] };

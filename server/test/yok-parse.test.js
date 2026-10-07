@@ -16,6 +16,14 @@ describe('parseSheetDate', () => {
     expect(parseSheetDate('1.2.2026')).toBe('2026-02-01');
   });
 
+  it('‼️ gviz "Date(y,m,d)" — เดือนนับจาก 0', () => {
+    expect(parseSheetDate('Date(2026,8,28)')).toBe('2026-09-28');  // 8 = ก.ย.
+    expect(parseSheetDate('Date(2026,0,1)')).toBe('2026-01-01');   // 0 = ม.ค.
+    expect(parseSheetDate('Date(2026,11,31)')).toBe('2026-12-31'); // 11 = ธ.ค.
+    expect(parseSheetDate('Date(2026,8,28,0,0,0)')).toBe('2026-09-28');
+    expect(parseSheetDate('Date(2026,12,1)')).toBeNull();          // เดือน 12 ไม่มีจริง
+  });
+
   it('ISO ผ่านตรง ๆ', () => {
     expect(parseSheetDate('2026-09-28')).toBe('2026-09-28');
     expect(parseSheetDate('2026-09-28T11:00:00Z')).toBe('2026-09-28');

@@ -2,7 +2,7 @@
 // payload เดียวต่อหน้า → ทุก section มาจาก snapshot เดียว asOf เดียว (MASTER §12.2)
 import { Router } from 'express';
 import { isYokEnabled } from '../../config/env.js';
-import { getYokBoard, getYokMeta, invalidateYokCache } from '../../sheets/yokSource.js';
+import { getYokBoard, getYokMeta, runYokSync } from '../../sheets/yokSource.js';
 import { requireRole } from '../middleware/auth.js';
 
 export const yokRouter = Router();
@@ -31,7 +31,11 @@ yokRouter.get('/meta', guardEnabled, requireRole('ADMIN'), async (_req, res, nex
   }
 });
 
-yokRouter.post('/refresh', guardEnabled, requireRole('ADMIN', 'PM'), (_req, res) => {
-  invalidateYokCache();
-  res.json({ ok: true });
+// กวาดใหม่ทันที ไม่ต้องรอรอบ cron
+yokRouter.post('/refresh', guardEnabled, requireRole('ADMIN', 'PM'), async (_req, res, next) => {
+  try {
+    res.json(await runYokSync({ trigger: 'MANUAL' }));
+  } catch (err) {
+    next(err);
+  }
 });
