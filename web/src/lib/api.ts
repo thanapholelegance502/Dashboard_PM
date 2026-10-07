@@ -1,6 +1,6 @@
 import type {
   Portfolio, Milestone, TrendResponse, AttentionItem, DrilldownResult,
-  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo,
+  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo, YokDashboard,
 } from './types';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -36,6 +36,10 @@ export const getTrend = (weeks = 12) => req<TrendResponse>(`/pm/trend${qs({ week
 export const getAttention = (status = 'OPEN') => req<{ items: AttentionItem[] }>(`/pm/attention${qs({ status })}`);
 export const getDrilldown = (code: string, f: { dept?: string; bucket?: string; overdue?: string } = {}) =>
   req<DrilldownResult>(`/pm/projects/${code}/tasks${qs(f)}`);
+
+// ── บอร์ด YOK ───────────────────────────────────────
+export const getYokDashboard = () => req<YokDashboard>(`/yok/dashboard`);
+export const refreshYok = () => req<{ ok: boolean }>(`/yok/refresh`, { method: 'POST' });
 
 // ── Auth ────────────────────────────────────────────
 export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[] }

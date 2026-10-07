@@ -78,3 +78,22 @@ export const BUCKET_COLOR: Record<string, string> = {
   WAITING: COLORS.waiting,
   BLOCKED: COLORS.delayed,
 };
+
+// ── บอร์ด YOK ── enum แยกจาก ProjectStatus โดยตั้งใจ (NOT_START/BLOCKED ไม่มีคู่ในของเรา)
+// ใช้ token สีชุดเดียวกันให้ดูเป็นระบบเดียว · แดง = ปัญหาเท่านั้น
+export const YOK_HEALTH_LABEL: Record<string, string> = {
+  NOT_START: 'ยังไม่เริ่ม',
+  ON_TRACK: 'ตามแผน',
+  AT_RISK: 'เสี่ยง',
+  DELAYED: 'ล่าช้า',
+  BLOCKED: 'ติดปัญหา',
+  COMPLETED: 'เสร็จแล้ว',
+};
+export const YOK_HEALTH_COLOR: Record<string, string> = {
+  NOT_START: COLORS.waiting,
+  ON_TRACK: COLORS.ontrack,
+  AT_RISK: COLORS.atrisk,
+  DELAYED: COLORS.delayed,
+  BLOCKED: COLORS.delayed,
+  COMPLETED: COLORS.done,
+};
