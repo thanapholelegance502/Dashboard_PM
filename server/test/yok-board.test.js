@@ -1,4 +1,10 @@
-// ‼️ fixture ชื่อสมมติเท่านั้น (MASTER §12.5)
+// ‼️ fixture ชื่อสมมติเท่านั้น — ชีตจริงมีชื่อลูกค้าจริง ห้ามหลุดเข้าโค้ด/เทส (MASTER §12.5)
+// โครงสร้าง fixture ตรงกับชีตจริงที่สำรวจแล้ว:
+//   Weekly_Update   = 1 แถวต่อสัปดาห์ (ไม่มี Project ID)
+//   Project_Billing = 1 แถวต่อโครงการ · ชีตคำนวณเก็บแล้ว/ค้างเก็บมาให้
+//   Billing_Schedule = ตารางที่ 2 ในแท็บเดียวกัน · 1 แถวต่องวด
+//   Pending_Kickoff = ดีลที่ยังไม่เปิดโครงการ (ไม่มี Project ID)
+//   Config!J        = ทะเบียนโครงการจริง
 import { describe, it, expect } from 'vitest';
 import { computeYokBoard } from '../src/domain/yokBoard.js';
 
@@ -7,45 +13,62 @@ const gidOf = new Map([
   ['Weekly_Update', 11], ['Milestone', 12], ['Executive_Action', 13],
   ['Pending_Kickoff', 14], ['Project_Billing', 15], ['MA_Tracking', 16],
 ]);
+const R = { missingOptional: [], unknownHeaders: [] };
+const sumBy = (a, k) => a.reduce((x, b) => x + (b[k] ?? 0), 0);
 
 const tabs = {
-  Weekly_Update: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
+  Config: {
+    resolved: R,
     items: [
-      { _row: 2, projectId: 'PRJ_ALPHA', projectName: 'Alpha', week: 'W39', weekStart: '2026-09-21', summary: 'ปกติ', risk: null },
-      { _row: 3, projectId: 'PRJ_BETA', projectName: 'Beta', week: 'W38', weekStart: '2026-09-14', summary: 'ช้า', risk: 'รอลูกค้า' },
+      { _row: 3, projectTab: 'PRJ_ALPHA' }, { _row: 4, projectTab: 'PRJ_BETA' },
+      { _row: 5, projectTab: 'PRJ_GAMMA' }, { _row: 6, projectTab: 'PRJ_ZETA' },
+    ],
+  },
+  Weekly_Update: {
+    resolved: R,
+    items: [
+      { _row: 4, weekStart: '2026-09-21', summary: 'สัปดาห์นี้ปกติ' },
+      { _row: 5, weekStart: '2026-09-14', summary: 'สัปดาห์ก่อน' },
     ],
   },
   Executive_Action: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
+    resolved: R,
     items: [
-      { _row: 2, projectId: 'PRJ_ALPHA', topic: 'อนุมัติงบเพิ่ม', owner: 'CEO', neededBy: '2026-09-20', status: null },
-      { _row: 3, projectId: 'PRJ_BETA', topic: 'เลือก vendor', owner: 'CFO', neededBy: '2026-10-15', status: 'Done' },
+      { _row: 2, projectId: 'PRJ_ALPHA', topic: 'อนุมัติงบเพิ่ม', owner: 'ทีมบริหาร', neededBy: '2026-09-20', status: 'รอตัดสินใจ' },
+      { _row: 3, projectId: 'PRJ_BETA', topic: 'เลือก vendor', owner: 'ทีมบริหาร', neededBy: '2026-10-15', status: 'อนุมัติแล้ว', decidedAt: '2026-09-25' },
     ],
   },
   Milestone: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
-    items: [{ _row: 2, projectId: 'PRJ_ALPHA', name: 'UAT', dueDate: '2026-10-05', status: null }],
+    resolved: R,
+    items: [{ _row: 2, projectId: 'PRJ_ALPHA', projectName: 'Alpha', name: 'UAT', dueDate: '2026-10-05', status: 'กำลังดำเนินการ' }],
   },
   Project_Billing: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
+    resolved: R,
     items: [
-      { _row: 2, projectId: 'PRJ_ALPHA', installment: 'งวด 1', amount: '฿1,000,000', dueDate: '2026-08-01', status: 'Paid' },
-      { _row: 3, projectId: 'PRJ_ALPHA', installment: 'งวด 2', amount: 500000, dueDate: '2026-09-01', status: 'Pending' },
-      { _row: 4, projectId: 'PRJ_BETA', installment: 'งวด 1', amount: 300000, dueDate: '2026-12-01', status: null },
-      { _row: 5, projectId: 'PRJ_GAMMA', installment: 'งวด 1', amount: '', dueDate: null, status: null },
+      { _row: 4, projectId: 'PRJ_ALPHA', projectName: 'Alpha', amountExVat: 1000000, amountIncVat: 1070000, installments: 2, billed: 1070000, outstanding: 0 },
+      { _row: 5, projectId: 'PRJ_BETA', projectName: 'Beta', amountExVat: 500000, amountIncVat: 535000, installments: 2, billed: 267500, outstanding: 267500 },
+      { _row: 6, projectId: 'PRJ_GAMMA', projectName: 'Gamma', amountExVat: '', amountIncVat: '', installments: 0, billed: 0, outstanding: 0 },
+    ],
+  },
+  Billing_Schedule: {
+    resolved: R,
+    items: [
+      { _row: 20, projectId: 'PRJ_ALPHA', installmentNo: 1, paid: 1, amountExVat: 500000, vat: 35000, amountIncVat: 535000, dueDate: '2026-08-01', paidDate: '2026-08-02' },
+      { _row: 21, projectId: 'PRJ_ALPHA', installmentNo: 2, paid: 1, amountExVat: 500000, vat: 35000, amountIncVat: 535000, dueDate: '2026-09-01', paidDate: '2026-09-01' },
+      { _row: 22, projectId: 'PRJ_BETA', installmentNo: 1, paid: 1, amountExVat: 250000, vat: 17500, amountIncVat: 267500, dueDate: '2026-08-15', paidDate: '2026-08-15' },
+      { _row: 23, projectId: 'PRJ_BETA', installmentNo: 2, paid: 0, amountExVat: 250000, vat: 17500, amountIncVat: 267500, dueDate: '2026-09-01', paidDate: null },
     ],
   },
   MA_Tracking: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
+    resolved: R,
     items: [
-      { _row: 2, projectId: 'PRJ_ALPHA', client: 'LUKKHA_A', startDate: '2026-01-01', endDate: '2026-10-20', value: 120000 },
-      { _row: 3, projectId: 'PRJ_BETA', client: 'LUKKHA_B', startDate: '2025-01-01', endDate: '2026-08-01', value: 90000 },
+      { _row: 4, projectId: 'PRJ_ALPHA', projectName: 'Alpha', startDate: '2026-01-01', endDate: '2026-10-20', duration: '12 เดือน', maType: 'มีค่า MA', projectValue: 1000000, value: 120000, payStatus: 'ชำระแล้ว' },
+      { _row: 5, projectId: 'PRJ_BETA', projectName: 'Beta', startDate: '2025-01-01', endDate: '2026-08-01', duration: '12 เดือน', maType: 'MA Free', projectValue: 500000, value: 0, payStatus: 'ฟรี' },
     ],
   },
   Pending_Kickoff: {
-    resolved: { missingOptional: [], unknownHeaders: [] },
-    items: [{ _row: 2, projectId: 'PRJ_DELTA', projectName: 'Delta', client: 'LUKKHA_C', value: 2000000, note: 'รอเซ็น' }],
+    resolved: R,
+    items: [{ _row: 2, projectName: 'ดีลใหม่ A', client: 'LUKKHA_C', note: 'รอเซ็นสัญญา' }],
   },
 };
 
@@ -53,76 +76,80 @@ const r = computeYokBoard({ tabs, gidOf, now });
 const S = r.sections;
 
 describe('computeYokBoard — invariant §12.2 (KPI กับ list มาจากชุดเดียวกัน)', () => {
-  it('ยอดเงินแต่ละก้อน = ผลรวมของรายการที่อธิบายมัน', () => {
+  it('ยอดรวมการเงิน = ผลรวมของแถวที่อธิบายมัน', () => {
     const items = S.billing.items;
-    const paid = items.filter((b) => b.paid);
-    const unpaid = items.filter((b) => !b.paid);
-    const overdue = unpaid.filter((b) => b.overdueDays != null);
-    const sum = (a) => a.reduce((x, b) => x + (b.amount ?? 0), 0);
-
-    expect(S.billing.totals.billed).toBe(sum(paid));
-    expect(S.billing.totals.outstanding).toBe(sum(unpaid));
-    expect(S.billing.totals.overdue).toBe(sum(overdue));
-    expect(S.billing.totals.planned).toBe(sum(items));
-    expect(S.billing.counts.billed).toBe(paid.length);
-    expect(S.billing.counts.overdue).toBe(overdue.length);
+    expect(S.billing.totals.exVat).toBe(sumBy(items, 'amountExVat'));
+    expect(S.billing.totals.incVat).toBe(sumBy(items, 'amountIncVat'));
+    expect(S.billing.totals.billed).toBe(sumBy(items, 'billed'));
+    expect(S.billing.totals.outstanding).toBe(sumBy(items, 'outstanding'));
   });
 
-  it('ปิดวง: เก็บแล้ว + ค้างเก็บ = ทั้งหมด', () => {
-    expect(S.billing.totals.billed + S.billing.totals.outstanding).toBe(S.billing.totals.planned);
+  it('‼️ ปิดวง: เก็บแล้ว + ค้างเก็บ = รวม VAT — invariant ตัวนี้จับการนับซ้ำสองตารางได้', () => {
+    const t = S.billing.totals;
+    expect(t.billed + t.outstanding).toBe(t.incVat);
+  });
+
+  it('‼️ ทุกงวด: ก่อน VAT + VAT = รวม VAT', () => {
+    expect(S.billing.schedule.length).toBeGreaterThan(0);
+    for (const x of S.billing.schedule) {
+      expect(x.amountExVat + x.vat, `งวด ${x.projectId}#${x.installmentNo}`).toBe(x.amountIncVat);
+    }
   });
 
   it('KPI บน overview ตรงกับ list ของแต่ละ section', () => {
     expect(S.overview.kpis.openActions).toBe(S.executiveAction.items.filter((a) => !a.done).length);
     expect(S.overview.kpis.openActions).toBe(S.executiveAction.openCount);
-    expect(S.overview.kpis.overdueBilling).toBe(S.billing.counts.overdue);
+    expect(S.overview.kpis.outstandingProjects).toBe(S.billing.items.filter((b) => (b.outstanding ?? 0) > 0).length);
+    expect(S.overview.kpis.overdueInstallments).toBe(S.billing.schedule.filter((x) => x.overdueDays != null).length);
     expect(S.overview.kpis.maExpiring).toBe(S.maTracking.expiringCount);
     expect(S.overview.kpis.projects).toBe(S.projects.items.length);
+  });
+
+  it('ยอดเลยกำหนด = ผลรวมของงวดที่เลยกำหนดจริง', () => {
+    const overdue = S.billing.schedule.filter((x) => x.overdueDays != null);
+    expect(S.billing.overdueAmount).toBe(sumBy(overdue, 'amountIncVat'));
   });
 });
 
 describe('computeYokBoard — การตีความข้อมูล', () => {
-  it('เงินเป็น text แปลงได้ · ช่องว่าง = null ไม่ใช่ 0 + มี warning', () => {
-    const byRow = Object.fromEntries(S.billing.items.map((b) => [b.rowRef.row, b]));
-    expect(byRow[2].amount).toBe(1000000);
-    expect(byRow[5].amount).toBeNull();
+  it('ค่าว่าง = null ไม่ใช่ 0 + มี warning', () => {
+    const gamma = S.billing.items.find((b) => b.projectId === 'PRJ_GAMMA');
+    expect(gamma.amountIncVat).toBeNull();
+    expect(gamma.amountExVat).toBeNull();
     expect(r.warnings.find((w) => w.kind === 'missingAmount')).toMatchObject({ tab: 'Project_Billing', count: 1 });
   });
 
-  it('สถานะจ่ายแล้วอ่านจากข้อความหลวม ๆ · ว่าง = ยังไม่จ่าย', () => {
-    const byRow = Object.fromEntries(S.billing.items.map((b) => [b.rowRef.row, b]));
-    expect(byRow[2].paid).toBe(true);
-    expect(byRow[3].paid).toBe(false);
-    expect(byRow[4].paid).toBe(false);
+  it('ค้างเก็บ 0 = จ่ายครบ', () => {
+    expect(S.billing.items.find((b) => b.projectId === 'PRJ_ALPHA').fullyPaid).toBe(true);
+    expect(S.billing.items.find((b) => b.projectId === 'PRJ_BETA').fullyPaid).toBe(false);
   });
 
-  it('งวดเลยกำหนดนับจากวันจริง · ยังไม่ถึงกำหนดไม่นับ', () => {
-    const byRow = Object.fromEntries(S.billing.items.map((b) => [b.rowRef.row, b]));
-    expect(byRow[3].overdueDays).toBe(27); // 2026-09-01 → 2026-09-28
-    expect(byRow[4].overdueDays).toBeNull(); // 2026-12-01 ยังไม่ถึง
-    expect(byRow[2].overdueDays).toBeNull(); // จ่ายแล้ว
+  it('งวดเลยกำหนดนับจากวันจริง · จ่ายแล้วไม่นับ', () => {
+    const byRow = Object.fromEntries(S.billing.schedule.map((x) => [x.rowRef.row, x]));
+    expect(byRow[23].overdueDays).toBe(27); // 2026-09-01 → 2026-09-28 ยังไม่จ่าย
+    expect(byRow[21].overdueDays).toBeNull(); // จ่ายแล้ว
+  });
+
+  it('สถานะไทย "อนุมัติแล้ว" = ปิดเรื่องแล้ว', () => {
+    expect(S.executiveAction.openCount).toBe(1);
+    expect(S.executiveAction.items.find((a) => a.projectId === 'PRJ_BETA').done).toBe(true);
   });
 
   it('MA ใกล้หมดอายุ/หมดแล้ว แยกกัน', () => {
     expect(S.maTracking.expiringCount).toBe(1); // 2026-10-20 เหลือ 22 วัน
     expect(S.maTracking.expiredCount).toBe(1);  // 2026-08-01 หมดแล้ว
-    expect(S.maTracking.items[0].endDate).toBe('2026-08-01'); // เรียงวันหมดอายุก่อน
   });
 
-  it('Executive Action ที่ Done ไม่นับเป็น open', () => {
-    expect(S.executiveAction.openCount).toBe(1);
-    expect(S.executiveAction.items.find((a) => a.topic === 'เลือก vendor').done).toBe(true);
-  });
-
-  it('Weekly Update เรียงใหม่สุดขึ้นก่อน', () => {
-    expect(S.weeklyUpdate.items.map((w) => w.week)).toEqual(['W39', 'W38']);
+  it('Weekly Update เป็นระดับ portfolio เรียงใหม่สุดก่อน ไม่มี projectId', () => {
+    expect(S.weeklyUpdate.items.map((w) => w.weekStart)).toEqual(['2026-09-21', '2026-09-14']);
+    expect(S.weeklyUpdate.items[0]).not.toHaveProperty('projectId');
   });
 });
 
 describe('computeYokBoard — ความถูกต้องของโครงสร้าง', () => {
-  it('‼️ ทุกแถวทุก section มี rowRef ชี้กลับไปที่ cell ในชีต (§12.1)', () => {
+  it('‼️ ทุกแถวทุก section มี rowRef ชี้กลับไปที่ชีต (§12.1)', () => {
     const all = [
-      ...S.weeklyUpdate.items, ...S.executiveAction.items, ...S.billing.items,
+      ...S.weeklyUpdate.items, ...S.executiveAction.items, ...S.billing.items, ...S.billing.schedule,
       ...S.maTracking.items, ...S.projects.milestones, ...S.projects.pendingKickoff,
     ];
     expect(all.length).toBeGreaterThan(0);
@@ -130,27 +157,19 @@ describe('computeYokBoard — ความถูกต้องของโค�
       expect(it.rowRef, JSON.stringify(it)).toBeTruthy();
       expect(typeof it.rowRef.row).toBe('number');
       expect(it.rowRef.tab).toBeTruthy();
-      expect(it.rowRef.gid).not.toBeUndefined();
     }
   });
 
-  it('roster รวมโครงการจากทุกแท็บ ไม่ซ้ำ', () => {
+  it('ทะเบียนโครงการมาจาก Config!J — รวมตัวที่ยังไม่มีข้อมูลในแท็บอื่น', () => {
     const ids = S.projects.items.map((p) => p.projectId);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toContain('PRJ_ALPHA');
-    expect(ids).toContain('PRJ_GAMMA'); // มีแค่ใน billing
+    expect(ids).toContain('PRJ_ZETA'); // มีแค่ใน Config
+    expect(S.overview.kpis.projects).toBe(4);
   });
 
-  it('Pending Kickoff ไม่ถูกนับเป็นโครงการที่เดินอยู่ (แยกลิสต์เหมือนเว็บหยก)', () => {
-    expect(S.projects.items.map((p) => p.projectId)).not.toContain('PRJ_DELTA');
-    expect(S.projects.pendingKickoff.map((p) => p.projectId)).toEqual(['PRJ_DELTA']);
-    expect(S.overview.kpis.projects).toBe(3);
-  });
-
-  it('ยังไม่ได้เชื่อมแท็บรายโครงการ → ติดธงไว้ ไม่แกล้งว่ามีข้อมูล', () => {
-    expect(S.overview.projectsIncomplete).toBe(true);
-    expect(S.overview.byHealth).toEqual([]);
-    expect(r.warnings.find((w) => w.kind === 'projectDetailPending')).toBeTruthy();
+  it('Pending Kickoff แยกลิสต์ ไม่มี Project ID', () => {
+    expect(S.projects.pendingKickoff).toHaveLength(1);
+    expect(S.projects.pendingKickoff[0]).not.toHaveProperty('projectId');
   });
 
   it('byStage มีครบ 13 ขั้นเสมอ (ลำดับคงที่)', () => {
@@ -159,10 +178,15 @@ describe('computeYokBoard — ความถูกต้องของโค�
     expect(S.overview.byStage[12].key).toBe('PROD');
   });
 
+  it('ยังไม่ได้อ่านแท็บรายโครงการ → ติดธงไว้ ไม่แกล้งว่ามีข้อมูล', () => {
+    expect(S.overview.projectsIncomplete).toBe(true);
+    expect(r.warnings.find((w) => w.kind === 'projectDetailPending')).toBeTruthy();
+  });
+
   it('ชีตว่างทั้งหมด → ทุกอย่างเป็น 0/[] ไม่ระเบิด', () => {
     const empty = computeYokBoard({ tabs: {}, gidOf, now });
     expect(empty.sections.overview.kpis.projects).toBe(0);
-    expect(empty.sections.billing.totals.planned).toBe(0);
-    expect(empty.sections.weeklyUpdate.items).toEqual([]);
+    expect(empty.sections.billing.totals.incVat).toBe(0);
+    expect(empty.sections.billing.schedule).toEqual([]);
   });
 });

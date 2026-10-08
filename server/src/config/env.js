@@ -37,7 +37,10 @@ export const env = {
   googleSaKeyB64: process.env.GOOGLE_SA_KEY_B64 ?? '',
   sheetsApiHost: process.env.SHEETS_API_HOST ?? 'https://sheets.googleapis.com/v4',
   yokSheetId: process.env.YOK_SHEET_ID ?? '',
-  yokCacheTtlMs: Number(process.env.YOK_CACHE_TTL_MS ?? 60_000),
+  // gviz = ยิง endpoint เดียวกับเว็บเดิม (ชีตต้องเปิด public) · api = service account (ปิดชีตได้)
+  yokSource: process.env.YOK_SOURCE ?? 'gviz',
+  yokCronMorning: process.env.YOK_CRON_MORNING ?? '0 9 * * *',
+  yokCronEvening: process.env.YOK_CRON_EVENING ?? '0 17 * * *',
 
   // Sync schedule
   cronMorning: process.env.SYNC_CRON_MORNING ?? '0 8 * * *',
@@ -52,12 +55,14 @@ export function assertLarkConfig() {
 /** บอร์ด YOK ต้องมี sheet id + ทางเข้าถึง key อย่างใดอย่างหนึ่ง */
 export function assertGoogleConfig() {
   required('YOK_SHEET_ID');
-  if (!env.googleSaKeyFile && !env.googleSaKeyB64) {
-    throw new Error('Missing required env: GOOGLE_SA_KEY_FILE หรือ GOOGLE_SA_KEY_B64');
+  if (env.yokSource === 'api' && !env.googleSaKeyFile && !env.googleSaKeyB64) {
+    throw new Error('YOK_SOURCE=api ต้องมี GOOGLE_SA_KEY_FILE หรือ GOOGLE_SA_KEY_B64');
   }
 }
 
 /** บอร์ด YOK เปิดใช้งานได้ไหม (ไม่มี config = ปิดบอร์ด ไม่ใช่ crash ทั้งแอป) */
 export function isYokEnabled() {
-  return Boolean(env.yokSheetId && (env.googleSaKeyFile || env.googleSaKeyB64));
+  if (!env.yokSheetId) return false;
+  if (env.yokSource === 'api') return Boolean(env.googleSaKeyFile || env.googleSaKeyB64);
+  return true; // gviz ไม่ต้องมี credential — แลกกับชีตต้องเปิด public
 }

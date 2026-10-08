@@ -25,7 +25,8 @@ function aliasHits(rowCells, fields) {
   const norm = rowCells.map(normalizeHeader);
   let hits = 0;
   for (const spec of Object.values(fields)) {
-    if (spec.aliases.some((a) => norm.includes(normalizeHeader(a)))) hits += 1;
+    // field ที่ตรึง col ไว้ ไม่มี aliases ให้นับ
+    if ((spec.aliases ?? []).some((a) => norm.includes(normalizeHeader(a)))) hits += 1;
   }
   return hits;
 }
@@ -61,8 +62,15 @@ export function resolveHeaders(tabName, rows, spec) {
   const matched = new Set();
 
   for (const [field, s] of Object.entries(fields)) {
+    // คอลัมน์ที่หัวตารางว่าง (merged cell ในชีต) → ตรึง index ไว้ตรง ๆ
+    // ใช้เมื่อไม่มีหัวให้ match เท่านั้น · ต้องเขียนหลักฐานกำกับใน mapping.js เสมอ
+    if (typeof s.col === 'number') {
+      index[field] = s.col;
+      matched.add(s.col);
+      continue;
+    }
     let col = -1;
-    for (const alias of s.aliases) {
+    for (const alias of (s.aliases ?? [])) {
       const at = headerCells.indexOf(normalizeHeader(alias));
       if (at !== -1) {
         col = at;
@@ -83,7 +91,7 @@ export function resolveHeaders(tabName, rows, spec) {
     .filter(Boolean);
 
   if (missingRequired.length) {
-    const tried = missingRequired.map((f) => `${f} (ลอง: ${fields[f].aliases.join(' / ')})`).join(' · ');
+    const tried = missingRequired.map((f) => `${f} (ลอง: ${(fields[f].aliases ?? []).join(' / ') || 'ไม่มี alias'})`).join(' · ');
     throw new SheetMappingError(
       `แท็บ "${tabName}" ไม่พบคอลัมน์ที่จำเป็น: ${tried} — หัวตารางที่เจอ: ${headersSeen.join(' | ') || '(ว่าง)'}`,
       { tab: tabName, missingRequired, headersSeen }
@@ -107,14 +115,39 @@ export function makeRowReader(resolved) {
 }
 
 /** แถวข้อมูลทั้งหมดของ tab (ข้ามหัวตาราง, ทิ้งแถวว่างล้วน) · rowNumber = เลขแถวจริงในชีต (1-based) */
+/**
+ * บางแท็บมี 2 ตารางซ้อนกัน (เช่น Project_Billing: สรุปรายโครงการ → banner คั่น → ตารางงวด)
+ * startAfter = เริ่มอ่านหลังแถวที่ col0 ตรง regex · stopWhen = หยุดเมื่อ col0 ตรง regex
+ * ใช้ regex ไม่ใช่เลขแถว → หยกแทรกแถวข้างบนแล้วไม่พัง
+ */
+function sliceTable(rows, spec) {
+  let start = 0;
+  if (spec.startAfter) {
+    const at = rows.findIndex((r) => spec.startAfter.test(String(r?.[0] ?? '')));
+    if (at === -1) return { rows: [], offset: 0, notFound: true };
+    start = at + 1;
+  }
+  let end = rows.length;
+  if (spec.stopWhen) {
+    const at = rows.slice(start).findIndex((r) => spec.stopWhen.test(String(r?.[0] ?? '')));
+    if (at !== -1) end = start + at;
+  }
+  return { rows: rows.slice(start, end), offset: start, notFound: false };
+}
+
 export function readTab(tabName, rows, spec) {
-  const resolved = resolveHeaders(tabName, rows, spec);
+  const { rows: slice, offset, notFound } = sliceTable(rows, spec);
+  if (notFound) {
+    throw new SheetMappingError(`แท็บ "${tabName}" ไม่พบจุดเริ่มตาราง (startAfter)`, { tab: tabName, headersSeen: [] });
+  }
+  const resolved = resolveHeaders(tabName, slice, spec);
   const read = makeRowReader(resolved);
   const items = [];
-  for (let i = resolved.headerRowIndex + 1; i < rows.length; i += 1) {
-    const row = rows[i];
+  for (let i = resolved.headerRowIndex + 1; i < slice.length; i += 1) {
+    const row = slice[i];
     if (!row || row.every((c) => c === '' || c == null)) continue;
-    items.push(read(row, i + 1));
+    // _row = เลขแถวจริงในชีต (1-based) นับรวม offset ของตารางที่สอง
+    items.push(read(row, offset + i + 1));
   }
   return { items, resolved };
 }

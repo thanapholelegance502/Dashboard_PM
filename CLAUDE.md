@@ -18,7 +18,7 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **Redesign UI ทั้ง Portal** (Claude Design v0.1) — PR #7 · frontend อย่างเดียว
 - ✅ **บอร์ด QA** `/qa/` (repo Dashboard_Tester, branch `Main`) — เปิดบน server แล้ว + รายงาน Tester ตามช่วงวัน · ค้างฝั่ง tester ดู HANDOFF §4
 - ✅ **บอร์ด BA** `/ba/` (repo Dashboard_BA, branch `main`) — เปิดบน server แล้ว · DB `ba` แยก · Lark user OAuth → [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md)
-- 🚧 **บอร์ด YOK** `/yok` — Project Executive (ทีม PM อีกสาย) อ่าน Google Sheet ฝั่ง server · รอตั้ง service account → [docs/YOK-BOARD.md](docs/YOK-BOARD.md)
+- ✅ **บอร์ด YOK** `/yok` — Project Executive (ทีม PM อีกสาย) กวาด Google Sheet ฝั่ง server cron 09:00/17:00 เก็บลง Postgres · 🔴 โหมด gviz = ชีตยังต้องเปิด public · ปิดชีตได้เมื่อย้ายเป็น `YOK_SOURCE=api` → [docs/YOK-BOARD.md](docs/YOK-BOARD.md)
 - 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
 

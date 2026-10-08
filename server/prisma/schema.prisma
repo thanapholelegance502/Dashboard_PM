@@ -201,3 +201,19 @@ model Session {
   @@index([expire], map: "IDX_session_expire")
   @@map("session")
 }
+
+// ผลกวาด Google Sheet ของบอร์ด YOK — cron 09:00/17:00 เขียนแถวใหม่ทุกรอบ
+// เก็บทั้ง payload ที่คำนวณแล้ว → restart/deploy แล้วหน้าไม่ว่าง (MASTER §12.4)
+// เก็บประวัติไว้ด้วย (รอบละ ~2/วัน) เผื่อทำ trend ภายหลัง
+model YokSnapshot {
+  id         Int      @id @default(autoincrement())
+  fetchedAt  DateTime @default(now())
+  ok         Boolean  @default(true) // false = รอบนั้นล้ม (เก็บ error ไว้ดู ไม่ทับรอบที่สำเร็จ)
+  errorText  String?
+  payload    Json? // ผลจาก computeYokBoard (null เมื่อ ok=false)
+  rowCounts  Json? // {tab: n} ไว้ดูย้อนหลังว่ารอบไหนข้อมูลหาย
+  durationMs Int?
+
+  @@index([fetchedAt])
+  @@index([ok, fetchedAt])
+}

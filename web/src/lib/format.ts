@@ -42,10 +42,10 @@ export function isStale(lastSyncAt: string | null): boolean {
   }
 }
 
-/** เงินบาทเต็ม: ฿1,500,000 */
+/** เงินบาทเต็ม: ฿1,500,000 · ตัดเศษเกิน 2 ตำแหน่ง (ชีต YOK มีเศษสตางค์ · ฝั่ง Lark เป็น Int อยู่แล้ว) */
 export function money(v: number | null | undefined): string {
   if (v === null || v === undefined) return '—';
-  return `฿${v.toLocaleString('th-TH')}`;
+  return `฿${v.toLocaleString('th-TH', { maximumFractionDigits: 2 })}`;
 }
 
 /** เงินย่อสำหรับตัวเลขใหญ่: 17.4 ลบ. (≥ 1 ล้าน) · ต่ำกว่านั้นแสดงเต็ม — คู่กับ title={money(v)} */
