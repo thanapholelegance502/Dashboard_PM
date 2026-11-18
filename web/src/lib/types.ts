@@ -211,8 +211,11 @@ export interface AppUserRow {
 }
 
 // ทะเบียนบอร์ดแผนก — มาจาก server/src/domain/boards.js ผ่าน /api/auth/me
+export type BoardGroupKey = 'exec' | 'project' | 'dept';
+export interface BoardGroup { key: BoardGroupKey; label: string }
 export interface BoardInfo {
   code: string;
+  group: BoardGroupKey; // หัวกลุ่มในเมนู + หน้าแรก
   name: string;
   desc: string;
   path?: string;

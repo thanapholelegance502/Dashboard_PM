@@ -1,7 +1,7 @@
 // Auth routes — Lark SSO (MASTER §7) + authorize flow ครั้งแรก (DATA-LAYER §2)
 import { Router } from 'express';
 import { authProvider } from '../auth/provider.js';
-import { BOARDS, effectiveBoards, canAccessBoard } from '../../domain/boards.js';
+import { BOARDS, BOARD_GROUPS, effectiveBoards, canAccessBoard } from '../../domain/boards.js';
 import { classifyCallback } from '../../domain/oauthState.js';
 import { exchangeCodeForToken } from '../../lark/auth.js';
 import { writeAudit } from '../../domain/audit.js';
@@ -75,7 +75,7 @@ authRouter.get('/me', (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'ต้อง login' });
   const { id, email, displayName, role } = req.user;
   // boardCatalog = ทะเบียนบอร์ดจาก domain/boards.js (หน้า landing + แท็บผู้ใช้ใช้ชุดเดียวกัน ไม่ต้อง hardcode ซ้ำฝั่ง web)
-  res.json({ id, email, displayName, role, boards: effectiveBoards(req.user), boardCatalog: BOARDS });
+  res.json({ id, email, displayName, role, boards: effectiveBoards(req.user), boardCatalog: BOARDS, boardGroups: BOARD_GROUPS });
 });
 
 // GET /api/auth/check?board=QA — nginx auth_request เรียกก่อนเปิดแอปแผนก (/qa/…)
