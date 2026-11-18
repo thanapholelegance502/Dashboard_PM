@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { logout } from '../lib/api';
 import type { BoardInfo } from '../lib/types';
+import { groupBoards } from '../lib/boardGroups';
 
 interface Props {
   title: string;
@@ -28,11 +29,8 @@ export default function AppShell({ title, eyebrow, asOf, stale, tagline, actions
   const groups = user?.boardGroups ?? [];
   const allowed = new Set(user?.boards ?? []);
   const visible = (b: BoardInfo) => (b.kind === 'soon' ? true : allowed.has(b.code) && !!b.path);
-  // กลุ่มที่ไม่มีบอร์ดให้เห็นเลย → ซ่อนหัวกลุ่มด้วย ไม่ปล่อยหัวลอย ๆ
-  // ‼️ บอร์ด "เร็ว ๆ นี้" ไม่นับว่าทำให้กลุ่มมีของ (VIEWER ที่มีแค่การเงินต้องไม่เห็นหัว "แผนก" เพราะ UX/UI)
-  const grouped = groups
-    .map((g) => ({ ...g, boards: catalog.filter((b) => b.group === g.key && visible(b)) }))
-    .filter((g) => g.boards.some((b) => b.kind !== 'soon'));
+  // กลุ่มที่ไม่มีบอร์ดให้เห็นเลย → ซ่อนหัวกลุ่มด้วย · groups ว่าง (server เก่าช่วง deploy) → fallback หัว "บอร์ด"
+  const grouped = groupBoards(groups, catalog.filter(visible));
   const canSettings = !!user && ['ADMIN', 'PM'].includes(user.role); // VIEWER เข้าหน้าตั้งค่าไม่ได้ (backend 403)
 
   const boardItem = (b: BoardInfo) => {

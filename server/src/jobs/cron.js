@@ -3,8 +3,8 @@ import cron from 'node-cron';
 import { env } from '../config/env.js';
 import { runSync } from '../etl/runSync.js';
 import { writeSnapshot } from '../etl/snapshot.js';
-import { isYokEnabled, isWeeklyReportEnabled } from '../config/env.js';
-import { sendWeeklyReport } from '../report/sendWeekly.js';
+import { isYokEnabled, isWeeklyArchiveEnabled } from '../config/env.js';
+import { runScheduledWeekly } from '../report/sendWeekly.js';
 import { prisma } from '../db/prisma.js';
 import { todayDateStrBkk } from '../domain/time.js';
 import { runYokSync } from '../sheets/yokSource.js';
@@ -58,7 +58,8 @@ export function startCron() {
   }
 
   // รายงานรายสัปดาห์ (บอร์ด PM/KHAW) — ศุกร์ 17:30 หลัง sync 17:00
-  if (isWeeklyReportEnabled()) {
+  // ‼️ ลงเสมอใน production: ปิดสัปดาห์เก็บ PDF archive ทุกครั้ง · ส่งเมลเฉพาะตอนตั้ง SMTP แล้ว
+  if (isWeeklyArchiveEnabled()) {
     cron.schedule(
       env.weeklyReportCron,
       async () => {
@@ -66,14 +67,14 @@ export function startCron() {
           await waitForRunningSync();
           // sync ควรสำเร็จหลัง 16:50 วันนี้ (รอบ 17:00) — ไม่ถึงก็ยังส่ง แต่ขึ้นแถบเตือนในเมล/PDF
           const expectSince = new Date(`${todayDateStrBkk(new Date())}T16:50:00+07:00`);
-          await sendWeeklyReport({ kind: 'SCHEDULED', expectSince });
+          await runScheduledWeekly({ expectSince });
         } catch (err) {
           console.error('[cron weekly-report] ล้มเหลว:', err.message);
         }
       },
       opts
     );
-    console.log(`[cron] weekly report: "${env.weeklyReportCron}" (Asia/Bangkok)`);
+    console.log(`[cron] weekly close/report: "${env.weeklyReportCron}" (Asia/Bangkok)`);
   }
 
   console.log(`[cron] ตั้งเวลา: morning="${env.cronMorning}" evening="${env.cronEvening}" (Asia/Bangkok)`);

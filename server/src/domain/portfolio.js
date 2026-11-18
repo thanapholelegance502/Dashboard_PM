@@ -67,6 +67,28 @@ export function computeUpcomingMilestones(projects, now, { days = null, limit = 
 /** ลำดับเดียวกับ donut บนหน้า PM (web/src/pages/PM.tsx donutData) */
 export const STATUS_ORDER = Object.freeze(['WAITING', 'ON_TRACK', 'AT_RISK', 'DELAYED', 'DONE']);
 
+/**
+ * ลำดับ "ความเดือดร้อน" — เดือดร้อนก่อน เสร็จท้ายสุด
+ * ใช้ทั้งหน้า /pm และ PDF/อีเมล (ชุดเดียว §12.2) · Waiting หลัง On Track (ยังไม่เริ่ม ความเดือดร้อนต่ำกว่า)
+ */
+export const PAIN_ORDER = Object.freeze(['DELAYED', 'AT_RISK', 'ON_TRACK', 'WAITING', 'DONE']);
+
+/**
+ * เรียง projectRow[] ตามความเดือดร้อน · ในสถานะเดียวกัน slipDays มากก่อน
+ * สถานะ+slip เท่ากัน = คงลำดับเดิมของ input (Array.sort ของ Node 20 stable → ได้ sortOrder เดิม)
+ */
+export function sortByPain(rows) {
+  const rank = (s) => {
+    const i = PAIN_ORDER.indexOf(s);
+    return i === -1 ? PAIN_ORDER.length : i; // สถานะแปลก → ท้ายสุด
+  };
+  return [...rows].sort((a, b) => {
+    const r = rank(a.status) - rank(b.status);
+    if (r !== 0) return r;
+    return (b.slipDays ?? -Infinity) - (a.slipDays ?? -Infinity); // slip มากก่อน · null = ท้ายกลุ่ม
+  });
+}
+
 /** นับโครงการตามสถานะ — ไม่ใส่สถานะที่เป็น 0 (เหมือน donut) */
 export function computeStatusBreakdown(projectRows) {
   const by = {};

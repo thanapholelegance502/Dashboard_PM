@@ -36,6 +36,16 @@ function weekdayBkk(d) {
   return new Date(`${iso}T12:00:00Z`).getUTCDay();
 }
 
+/** ISO week ตามวันกรุงเทพ เช่น 2026-W47 — กุญแจกันส่งซ้ำ + id ของโน้ต/archive รายสัปดาห์ */
+export function isoWeekBkk(now) {
+  const d = new Date(`${isoDateBkk(now)}T00:00:00Z`);
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const wk = Math.ceil(((d - yearStart) / 864e5 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
+}
+
 /** ช่วงวันทำงานของสัปดาห์ที่ now อยู่: "16–20 พ.ย. 69" (จันทร์–ศุกร์) */
 export function workWeekRange(now) {
   const d = toDate(now);

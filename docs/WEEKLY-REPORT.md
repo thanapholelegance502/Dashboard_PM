@@ -5,10 +5,26 @@
 
 ---
 
+## 0. รายงาน v2 — โน้ต 3 ช่อง + ปิดสัปดาห์ + ดูย้อนหลัง
+
+**โน้ตรายสัปดาห์ (PM/ADMIN พิมพ์)** — การ์ด "บันทึกประจำสัปดาห์" ในหน้า `/pm` มี 3 ช่อง: **สรุปภาพรวม · ปัญหาและอุปสรรค · งานนอก scope ที่ทำเพิ่มเติม** → ขึ้น **หน้า 1** ของ PDF (ช่องว่าง = "—") · VIEWER เห็นแบบอ่านอย่างเดียว · เก็บ 1 แถว/ISO week (`WeeklyNote.weekKey`)
+
+**ปิดสัปดาห์ = เก็บ PDF ย้อนหลัง** — cron ศุกร์ 17:30 (+ ปุ่ม "ปิดสัปดาห์ตอนนี้") เก็บ PDF ลง `WeeklyReportArchive` **เสมอ แม้ยังไม่ตั้ง SMTP** (ประวัติไม่ผูกกับการส่งเมล) · สัปดาห์ที่ปิดแล้ว **โน้ตล็อก แก้ไม่ได้** · กดปิดซ้ำ = เขียนทับฉบับสัปดาห์นั้น + ลง AuditLog
+- การ์ด "รายงานย้อนหลัง" ในหน้า `/pm` → กดโหลด PDF ของสัปดาห์ที่ปิดแล้ว
+- ลง cron ปิดสัปดาห์เมื่อ `NODE_ENV=production` (`isWeeklyArchiveEnabled`) · ส่งเมลเมื่อ SMTP ครบ (`isWeeklyReportEnabled`) — แยกกัน
+
+**ลำดับโครงการ** — ทั้งหน้า `/pm` และ PDF เรียงตามความเดือดร้อน **Delayed → At Risk → On Track → Waiting → Done** (`sortByPain` ใน `domain/portfolio.js` ชุดเดียว) · **งาน Done แยก section "เสร็จแล้ว"** ออกจาก timeline/ตารางหลัก · KPI + donut ยังนับ Done (ภาพรวมพอร์ต)
+
+**ลิงก์ footer** — ถ้า `PUBLIC_BASE_URL` ว่าง PDF ไม่โชว์ลิงก์เสีย (เลี่ยง "ตรวจสอบได้ที่ /pm") + log เตือน → ตั้ง `PUBLIC_BASE_URL` บน server ให้ลิงก์กลับมา
+
+**API** (`/api/pm/*` สิทธิ์บอร์ด PM · mutation = ADMIN/PM): `GET weekly-notes/current` · `PUT weekly-notes/:weekKey` · `GET weekly-reports` · `GET weekly-reports/:weekKey.pdf` · `POST weekly-reports/close`
+
+---
+
 ## 1. ในรายงานมีอะไร (A4 แนวตั้ง)
 
-หน้า 1: KPI 7 ใบ · CEO Attention · สถานะโครงการ (donut) · Milestone ที่จะถึง
-หน้า 2+: ตารางทุกโครงการ — สถานะ · คืบหน้า · Target UAT / Go-Live · ช้ากี่วัน · เหตุผลสถานะ
+หน้า 1: **โน้ต 3 ช่อง** · KPI 7 ใบ · CEO Attention · สถานะโครงการ (donut) · Milestone ที่จะถึง
+หน้า 2+: ตารางโครงการ (เรียงตามความเดือดร้อน · ไม่รวม Done) → ตาราง **"โครงการที่เสร็จแล้ว"** แยกท้าย
 ทุกหน้ามีลิงก์กลับ dashboard จริง (§12.1) · ไม่ใส่ Gantt/trend (A4 แคบเกินอ่าน)
 
 **ถ้า sync 17:00 วันศุกร์ล้ม → ยังส่ง** แต่ขึ้นแถบแดง "ข้อมูล ณ <เวลา sync ล่าสุดที่สำเร็จ>" ทั้งในเมลและ PDF

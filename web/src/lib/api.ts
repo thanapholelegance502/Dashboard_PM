@@ -1,6 +1,7 @@
 import type {
   Portfolio, Milestone, TrendResponse, AttentionItem, DrilldownResult,
   AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo, BoardGroup, YokDashboard,
+  WeeklyNoteData, WeeklyNoteState, WeeklyArchiveItem,
 } from './types';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -70,6 +71,16 @@ export interface WeeklyReportStatus {
 export const getWeeklyReportStatus = () => req<WeeklyReportStatus>(`/admin/weekly-report/status`);
 export const testSendWeeklyReport = () =>
   req<{ sent?: boolean; recipientCount?: number }>(`/admin/weekly-report/test-send`, { method: 'POST' });
+
+// โน้ต 3 ช่อง/สัปดาห์ + ปิดสัปดาห์ + รายงานย้อนหลัง (บอร์ด KHAW)
+export const getWeeklyNote = () => req<WeeklyNoteState>(`/pm/weekly-notes/current`);
+export const saveWeeklyNote = (weekKey: string, data: WeeklyNoteData) =>
+  req<WeeklyNoteState>(`/pm/weekly-notes/${weekKey}`, { method: 'PUT', body: JSON.stringify(data) });
+export const listWeeklyReports = () => req<{ items: WeeklyArchiveItem[] }>(`/pm/weekly-reports`);
+export const closeWeeklyReport = () =>
+  req<{ weekKey: string; pdfBytes: number; redo: boolean }>(`/pm/weekly-reports/close`, { method: 'POST' });
+/** ลิงก์ตรงไปยัง PDF ที่ปิดสัปดาห์แล้ว (เปิด tab ใหม่ได้ตรง ๆ) */
+export const weeklyReportPdfUrl = (weekKey: string) => `/api/pm/weekly-reports/${weekKey}.pdf`;
 
 // ── Auth ────────────────────────────────────────────
 export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[]; boardGroups: BoardGroup[] }

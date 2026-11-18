@@ -1,7 +1,7 @@
 // ‼️ fixture ชื่อสมมติ (MASTER §12.5)
 import { describe, it, expect } from 'vitest';
 import {
-  sameBkkMonth, computePortfolioKpis, computeUpcomingMilestones, computeStatusBreakdown, toProjectRow,
+  sameBkkMonth, computePortfolioKpis, computeUpcomingMilestones, computeStatusBreakdown, toProjectRow, sortByPain,
 } from '../src/domain/portfolio.js';
 
 const now = new Date('2026-11-20T10:30:00Z'); // ศุกร์ 17:30 กรุงเทพ
@@ -83,5 +83,36 @@ describe('toProjectRow — field ครบ ลำดับเดิม', () => {
     expect(r.code).toBe('PRJ_A');
     expect(r.hasTargetGolive).toBe(false);
     expect(Object.keys(r)[0]).toBe('code');
+  });
+});
+
+describe('sortByPain — เรียงตามความเดือดร้อน (web + PDF ชุดเดียว)', () => {
+  const r = (code, status, slipDays = null) => ({ code, status, slipDays });
+
+  it('ลำดับสถานะ Delayed → At Risk → On Track → Waiting → Done', () => {
+    const out = sortByPain([
+      r('C', 'DONE'), r('W', 'WAITING'), r('O', 'ON_TRACK'), r('A', 'AT_RISK'), r('D', 'DELAYED'),
+    ]).map((x) => x.code);
+    expect(out).toEqual(['D', 'A', 'O', 'W', 'C']);
+  });
+
+  it('ในสถานะเดียวกัน slipDays มากก่อน · null ไปท้ายกลุ่ม', () => {
+    const out = sortByPain([
+      r('d5', 'DELAYED', 5), r('d20', 'DELAYED', 20), r('dNull', 'DELAYED', null), r('d12', 'DELAYED', 12),
+    ]).map((x) => x.code);
+    expect(out).toEqual(['d20', 'd12', 'd5', 'dNull']);
+  });
+
+  it('สถานะ+slip เท่ากัน → คงลำดับเดิมของ input (stable = sortOrder เดิม)', () => {
+    const out = sortByPain([
+      r('first', 'ON_TRACK'), r('second', 'ON_TRACK'), r('third', 'ON_TRACK'),
+    ]).map((x) => x.code);
+    expect(out).toEqual(['first', 'second', 'third']);
+  });
+
+  it('ไม่กลายพันธุ์ input เดิม', () => {
+    const input = [r('a', 'DONE'), r('b', 'DELAYED', 3)];
+    sortByPain(input);
+    expect(input.map((x) => x.code)).toEqual(['a', 'b']);
   });
 });

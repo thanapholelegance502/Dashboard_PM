@@ -6,9 +6,11 @@ import { computeAutoStatus } from '../../domain/status.js';
 import { BUCKET } from '../../domain/enums.js';
 import { computeFinance } from '../../domain/finance.js';
 import { isOverdue } from '../../domain/time.js';
-import { computePortfolioKpis } from '../../domain/portfolio.js';
+import { computePortfolioKpis, sortByPain } from '../../domain/portfolio.js';
 import { getLastSyncAt, getPortfolio, getMilestones, getAttention } from '../../services/pmBoard.js';
 import { generateWeeklyReport } from '../../report/sendWeekly.js';
+import { requireRole } from '../middleware/auth.js';
+import { getCurrentWeekNote, saveWeekNote, listArchives, getArchivePdf, closeWeek } from '../../services/weeklyNotes.js';
 
 export const pmRouter = Router();
 
@@ -65,7 +67,7 @@ pmRouter.get('/portfolio', async (req, res, next) => {
       let list = rows;
       if (projectCode) list = list.filter((r) => r.project.projectCode === projectCode);
       if (status) list = list.filter((r) => r.metrics.status === String(status));
-      const projects = list.map(({ project: p, metrics: m }) => ({
+      const projects = sortByPain(list.map(({ project: p, metrics: m }) => ({
         code: p.projectCode,
         displayName: p.displayName,
         pmUserId: p.pmUserId,
@@ -83,7 +85,7 @@ pmRouter.get('/portfolio', async (req, res, next) => {
         hasTargetGolive: p.targetGolive != null,
         counts: m.counts,
         asOfNoData: !m.hasData,
-      }));
+      })));
       const kpis = computePortfolioKpis(rows, now);
       return res.json({
         asOf: asOf,
@@ -109,6 +111,61 @@ pmRouter.get('/report.pdf', async (_req, res, next) => {
     res.set('Content-Disposition', `attachment; filename="${filename}"`);
     res.set('Cache-Control', 'no-store');
     res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── โน้ตรายสัปดาห์ + รายงานย้อนหลัง (บอร์ด KHAW) ──────────────────────────
+// mutation (PUT/close) ต้อง ADMIN/PM เพิ่ม — /api/pm ผ่านแค่ board guard (VIEWER ที่มีบอร์ด PM ก็เข้าถึง read ได้)
+
+// GET /api/pm/weekly-notes/current — โน้ต 3 ช่องของสัปดาห์ปัจจุบัน + ปิดแล้วหรือยัง
+pmRouter.get('/weekly-notes/current', async (_req, res, next) => {
+  try {
+    res.json(await getCurrentWeekNote(new Date()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/pm/weekly-notes/:weekKey — บันทึกโน้ต (เฉพาะสัปดาห์ที่ยังไม่ปิด)
+pmRouter.put('/weekly-notes/:weekKey', requireRole('ADMIN', 'PM'), async (req, res, next) => {
+  try {
+    res.json(await saveWeekNote({ weekKey: req.params.weekKey, data: req.body ?? {}, actor: req.user }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/pm/weekly-reports — รายการสัปดาห์ที่ปิดแล้ว (ไม่ดึง bytes)
+pmRouter.get('/weekly-reports', async (_req, res, next) => {
+  try {
+    res.json({ items: await listArchives() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/pm/weekly-reports/:weekKey.pdf — PDF ที่เก็บไว้ (ตรงกับที่ส่งไปจริง)
+pmRouter.get('/weekly-reports/:weekKey.pdf', async (req, res, next) => {
+  try {
+    const archive = await getArchivePdf(req.params.weekKey);
+    if (!archive) return res.status(404).json({ error: 'ยังไม่มีรายงานของสัปดาห์นี้' });
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="PMO-KHAW-${req.params.weekKey}.pdf"`);
+    res.set('Cache-Control', 'no-store');
+    res.send(archive.pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/pm/weekly-reports/close — ปิดสัปดาห์ปัจจุบันตอนนี้ (เก็บฉบับสด · กดซ้ำ = เขียนทับ)
+pmRouter.post('/weekly-reports/close', requireRole('ADMIN', 'PM'), async (req, res, next) => {
+  try {
+    const now = new Date();
+    const report = await generateWeeklyReport({ now });
+    res.json(await closeWeek({ now, report, actor: req.user }));
   } catch (err) {
     next(err);
   }

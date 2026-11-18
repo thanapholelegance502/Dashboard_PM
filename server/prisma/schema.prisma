@@ -217,3 +217,23 @@ model YokSnapshot {
   @@index([fetchedAt])
   @@index([ok, fetchedAt])
 }
+
+// โน้ตที่ PM/ADMIN พิมพ์ประจำสัปดาห์ (บอร์ด KHAW) — 1 แถวต่อ ISO week กรุงเทพ เช่น 2026-W47
+// 3 ช่องนี้ไปอยู่หน้า 1 ของ PDF รายสัปดาห์ · สัปดาห์ที่ "ปิด" แล้ว (มีใน WeeklyReportArchive) แก้ไม่ได้
+model WeeklyNote {
+  weekKey    String   @id // isoWeekBkk() ใน report/sendWeekly.js
+  summary    String   @default("") // สรุปภาพรวม
+  issues     String   @default("") // ปัญหาและอุปสรรค
+  outOfScope String   @default("") // งานนอก scope ที่ทำเพิ่มเติม
+  updatedBy  Int?
+  updatedAt  DateTime @updatedAt
+}
+
+// PDF ที่ "ปิดสัปดาห์" แล้ว — ดึงย้อนหลังได้ตรงตัว ไม่คำนวณใหม่ (ตรงกับที่ส่งไปจริง)
+// เก็บ "เสมอ" ทุกศุกร์ 17:30 แม้ยังไม่ตั้ง SMTP — ประวัติต้องไม่ผูกกับการส่งเมล
+model WeeklyReportArchive {
+  weekKey     String    @id
+  pdf         Bytes // ~100–150 KB/สัปดาห์
+  dataAsOf    DateTime?
+  generatedAt DateTime  @default(now())
+}
