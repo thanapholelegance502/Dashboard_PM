@@ -1,6 +1,6 @@
 # HANDOFF — เริ่มแชท/session ใหม่อ่านหน้านี้ก่อน
 
-> อัพเดต 28 ก.ย. 2026 · เขียนให้ AI session ใหม่รู้ครบว่า "ถึงไหน · ค้างอะไร · ระวังอะไร" โดยไม่ต้องย้อนอ่านแชทเก่า
+> อัพเดต 18 พ.ย. 2026 · เขียนให้ AI session ใหม่รู้ครบว่า "ถึงไหน · ค้างอะไร · ระวังอะไร" โดยไม่ต้องย้อนอ่านแชทเก่า
 > ลำดับอ่าน: **ไฟล์นี้** → [CLAUDE.md](../CLAUDE.md) (กติกา) → [STATUS.md](STATUS.md) (ตารางสถานะ) → เอกสารเฉพาะเรื่อง
 
 ---
@@ -9,7 +9,7 @@
 
 ```
 https://elegancedb.duckdns.org  (Vultr · Ubuntu · Caddy HTTPS · DuckDNS)
- └ nginx (container web) ─┬─ /        Portal: หน้าแรกเลือกบอร์ด · PM Portfolio · การเงิน (C-level) · ตั้งค่า   ← repo Dashboard_PM
+ └ nginx (container web) ─┬─ /        Portal: หน้าแรก · การเงิน · Project Executive (KHAW) /pm · (YOK) /yok · ตั้งค่า   ← repo Dashboard_PM
                           ├─ /api/    backend Portal (Lark SSO, whitelist, สิทธิ์บอร์ด, ETL PM)            ← repo Dashboard_PM
                           ├─ /qa/     บอร์ด QA (เช็กสิทธิ์บอร์ด QA ก่อน)                                  ← repo Dashboard_Tester
                           └─ /ba/     บอร์ด BA (เช็กสิทธิ์บอร์ด BA ก่อน)                                  ← repo Dashboard_BA
@@ -42,27 +42,38 @@ https://elegancedb.duckdns.org  (Vultr · Ubuntu · Caddy HTTPS · DuckDNS)
 
 ---
 
-## 3. ทำเสร็จล่าสุด (22–28 ก.ย.)
+## 3. ทำเสร็จล่าสุด (ต.ค.–18 พ.ย.)
 
 | เรื่อง | ที่ไหน |
 |---|---|
-| CI/CD + watchtower ทำงานจริง (แก้ `DOCKER_API_VERSION=1.44` + mount โฟลเดอร์ docker config) | PR #4 · [CICD.md](CICD.md) |
-| WAITING status (PM ตั้งเอง) · เอา Forecast ออก · Gantt คอลัมน์ Target/Actual Go-Live · ลบไอคอนกุญแจ | PR #5 |
-| login หา whitelist ด้วยอีเมลบริษัท (enterprise_email) + ไม่สนตัวพิมพ์ | PR #6 |
-| **Redesign UI ทั้ง Portal** ตาม Claude Design "Elegance PMO Design System v0.1" (sidebar กรมท่า · IBM Plex Sans Thai · วันที่ พ.ศ. · เงิน `ลบ.` · dialog แทน prompt · ยืนยันก่อนลบ) — frontend อย่างเดียว | PR #7 · [DESIGN-BRIEF.md](DESIGN-BRIEF.md) · รูป `docs/design/after/` |
-| **บอร์ด QA เปิดบน server แล้ว** (token ของแอป QA เอง) + **รายงาน Tester ตามช่วงวัน** (snapshot รายวัน `task_stage_snapshot`, cohort Ready for Test/Testing → done/fail/pending/returned/missing) | Dashboard_Tester PR #5 |
-| **บอร์ด BA เปิดบน server แล้ว** ที่ `/ba/` · DB `ba` แยก · user OAuth + เลือกบอร์ดในหน้า `/ba/admin` | Dashboard_PM PR #8–#10 · Dashboard_BA PR #1–#2 · [BA-ONBOARDING.md](BA-ONBOARDING.md) · [BA-LARK-AUTH.md](BA-LARK-AUTH.md) |
+| **Finance drill-down** — กดแถวโครงการ / งวดเลยกำหนด / แท่งกระแสเงินสด → drawer งวด · URL `?drill=` แชร์ได้ | PR #11 |
+| **C-4** งวดค้างเก็บเลยกำหนด ≥ 3 วัน → CEO Attention (`PAYMENT_OVERDUE`, DECISION, เตือนแม้โครงการ DONE) · แก้งวดแล้ว recompute ทันที | PR #12 |
+| **บอร์ด YOK** `/yok` — Project Executive ของทีม PM อีกสาย (หยก) · กวาด Google Sheet ผ่าน gviz cron 09:00/17:00 → Postgres `YokSnapshot` · 🔴 ชีตยังต้องเปิด public (ย้าย `YOK_SOURCE=api` เพื่อปิด) | PR #13–#14 · [YOK-BOARD.md](YOK-BOARD.md) |
+| **เมนูใหม่** จัดกลุ่ม ผู้บริหาร / โครงการ / แผนก · ตั้งค่าล่างสุด · ชื่อ `Project Executive (KHAW)` / `(YOK)` · sidebar + หน้าแรกอ่านจาก `server/src/domain/boards.js` ที่เดียว (`BOARD_GROUPS`) | PR #15 |
+| **ดาวน์โหลด PDF + เมลสรุปศุกร์ 17:30** (บอร์ด KHAW) · Chromium ใน server image · ตัวเลขจาก `services/pmBoard.js` ชุดเดียวกับหน้า `/pm` · ด่านกันส่งพลาด `mail/recipients.js` · **SMTP ยังไม่ได้ตั้ง = ยังไม่ส่งเมลใคร** | PR #16 · [WEEKLY-REPORT.md](WEEKLY-REPORT.md) |
 
 ---
 
 ## 4. ค้าง / รอ (เรียงตามความสำคัญ)
 
-### รอข้าว
+### 🎯 งานถัดไป (ข้าวสั่งแล้ว — ยังไม่เริ่ม)
+**รายงานรายสัปดาห์ v2** → แผนเต็ม **[NEXT-WEEKLY-REPORT-V2.md](NEXT-WEEKLY-REPORT-V2.md)**
+1. ข้าวบอก PDF "กาก" → จัด layout ใหม่ (หน้า 1 ว่างครึ่งล่าง · ลิงก์ footer เสีย · footer อ่านยาก)
+2. ช่องพิมพ์ 3 ช่องต่อสัปดาห์: สรุปภาพรวม · ปัญหาและอุปสรรค · งานนอก scope → ลง PDF
+3. โครงการ Done แยก section "เสร็จแล้ว" ออกจาก dashboard หลัก · เรียง Delayed → At Risk → On Track → Done
+4. เก็บรายสัปดาห์ + ดึง PDF ย้อนหลัง (เริ่มสัปดาห์นี้ ไม่ backfill)
+5. 🐛 บอร์ดหายจากเมนูช่วง deploy (web ขึ้นก่อน server ~2 นาที → `boardGroups` ไม่มา) — แก้ fallback ฝั่ง web
+
+### รอข้าว (บน server)
+- [ ] **`PUBLIC_BASE_URL=https://elegancedb.duckdns.org`** ใน `server/.env.production` → `up -d server` — ไม่ตั้ง = ลิงก์ใน PDF/เมลเสีย
+- [ ] เช็ค PDF ใน container: `$DC exec server npm run report:weekly -- --out /tmp/r.pdf` (image build ผ่านแล้ว แต่ยังไม่เคยรันจริงบน server)
+- [ ] ตั้ง SMTP (App Password Google) + เพิ่มผู้รับ 3 คนเป็นผู้ใช้ Portal + เปิด `WEEKLY_REPORT_ENABLED` → ขั้นตอนใน [WEEKLY-REPORT.md](WEEKLY-REPORT.md)
+- [ ] บอร์ด YOK: ขอหยกใส่หัวตารางคอลัมน์เงินให้ครบ (ตอนนี้ map ด้วย index — แทรก/ลบคอลัมน์แล้วเพี้ยนเงียบ) · ถอด public sharing ของชีตเมื่อย้ายเป็น `YOK_SOURCE=api`
 - [ ] ปิด SSH password บน Vultr (ใช้ key อย่างเดียว) → [MAINTAINING.md#h-3](MAINTAINING.md#h-3--ปิด-port--ssh-ใช้-key-อย่างเดียว) — ข้าวสั่ง "note ไว้ ไม่ต้องเตือนบ่อย"
 - [ ] copy backup ออกนอกเครื่อง / เปิด Vultr Automatic Backups (ตอนนี้ backup อยู่ดิสก์เดียวกับ VM)
 - [ ] branch protection (ถ้าอัปเกรด GitHub Pro) — Dashboard_PM `main` · Tester `Main` · BA `main`
-- [ ] ส่งผล `docker compose -f docker-compose.prod.yml exec -T qa node scripts/audit-tester-data.js` → AI ตรวจความถูกต้องข้อมูล QA (ชื่อ section / tester ที่พบ / จำนวนต่อ stage) — **ยังไม่ได้รับ**
-- [ ] บอร์ด BA: ติ๊กสิทธิ์ BA ให้ทีม · import snapshot เดิม (ถ้ายังไม่ได้ทำ) · ดูว่า sync อัตโนมัติ 08:00/17:00 วิ่ง
+- [ ] ส่งผล `docker compose -f docker-compose.prod.yml exec -T qa node scripts/audit-tester-data.js` → AI ตรวจข้อมูล QA — **ยังไม่ได้รับ**
+- [ ] บอร์ด BA: ติ๊กสิทธิ์ BA ให้ทีม · import snapshot เดิม · ดูว่า sync อัตโนมัติวิ่ง · ตอบ BA เรื่อง scope `task:custom_field:read` (ข้อ 1.2 กดเชื่อม Lark ใหม่ที่ `/ba/admin` **จำเป็น**)
 
 ### รอทีม tester (Dashboard_Tester)
 - [ ] ใส่ประตู `RELEASER` ใน CI (ตอนนี้ใคร push `Main` ก็ deploy — tester เคย merge เอง)
@@ -85,6 +96,9 @@ https://elegancedb.duckdns.org  (Vultr · Ubuntu · Caddy HTTPS · DuckDNS)
 - Lark Task **เชิญ bot ไม่ได้** → tenant_access_token อ่าน tasklist ไม่ได้ → ใช้ user OAuth เสมอ
 - QA: `LARK_REDIRECT_URI` ต้องชี้ `/qa/…` ของโดเมนนี้ · ต้องมี `DATABASE_URL` ใน `qa.env` (ไม่งั้นแอปไม่เก็บข้อมูล)
 - watchtower: `DOCKER_API_VERSION=1.44` · mount **โฟลเดอร์** docker config (ไม่ใช่ไฟล์ — ถ้า up ก่อน login จะได้โฟลเดอร์ `config.json` แล้ว `docker login` พัง → `rm -rf` แล้ว login ใหม่)
+- **web build ~40 วิ · server ~2 นาที (มี Chromium)** → หลัง merge web ใหม่ขึ้นก่อน server เสมอ → อย่าทำ web ที่พังเมื่อ API เก่ายังไม่มี field ใหม่
+- puppeteer 25+ ต้องการ Node 22 · server เป็น Node 20 → ใช้ `puppeteer-core@24` · `page.pdf()` คืน `Uint8Array` (ต้อง `Buffer.from`) ไม่งั้น Express ส่งเป็น JSON
+- ทดสอบ PDF ในเครื่อง: `CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"` · ดูภาพ PDF: `qlmanage -t -s 1400 -o . file.pdf`
 - ใน sandbox: อย่าใช้ `pkill -f`/`pgrep -f` (ฆ่า shell ตัวเอง) → kill ตาม port · Playwright ใช้ global install + `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` + `ignoreHTTPSErrors` (ฟอนต์ Google ผ่าน proxy)
 
 ---

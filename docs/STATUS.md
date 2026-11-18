@@ -1,6 +1,6 @@
 # STATUS — ทำอะไรไปแล้ว · กำลังทำ · จะทำ
 
-> อัพเดต 28 ก.ย. 2026 · **session ใหม่อ่าน [HANDOFF.md](HANDOFF.md) ก่อน** (สรุปทั้งหมด + ค้างอะไร)
+> อัพเดต 18 พ.ย. 2026 · **session ใหม่อ่าน [HANDOFF.md](HANDOFF.md) ก่อน** (สรุปทั้งหมด + ค้างอะไร)
 
 ---
 
@@ -42,6 +42,9 @@
 - **BA** `/ba/` (repo Dashboard_BA) — ✅ เปิดบน server แล้ว (25 ก.ย.) · DB `ba` แยก (user `ba_app`) · Lark user OAuth + เลือกบอร์ดใน `/ba/admin` · sync จ–ศ 08:00/17:00 → [BA-ONBOARDING.md](BA-ONBOARDING.md) · [BA-LARK-AUTH.md](BA-LARK-AUTH.md)
 
 ---
+
+## 🎯 งานถัดไป
+- **รายงานรายสัปดาห์ v2** — PDF layout ใหม่ · โน้ต 3 ช่องต่อสัปดาห์ · แยกโครงการ Done · เรียงตามความเดือดร้อน · PDF ย้อนหลัง · แก้เมนูหายช่วง deploy → [NEXT-WEEKLY-REPORT-V2.md](NEXT-WEEKLY-REPORT-V2.md)
 
 ## 🔜 กำลังทำ — P0
 
