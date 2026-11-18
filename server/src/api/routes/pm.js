@@ -3,38 +3,13 @@ import { Router } from 'express';
 import { prisma } from '../../db/prisma.js';
 import { computeProjectMetrics } from '../../domain/metrics.js';
 import { computeAutoStatus } from '../../domain/status.js';
-import { PROJECT_STATUS, BUCKET } from '../../domain/enums.js';
+import { BUCKET } from '../../domain/enums.js';
 import { computeFinance } from '../../domain/finance.js';
-import { isOverdue, daysUntil, todayDateStrBkk } from '../../domain/time.js';
+import { isOverdue } from '../../domain/time.js';
+import { computePortfolioKpis } from '../../domain/portfolio.js';
+import { getLastSyncAt, getPortfolio, getMilestones, getAttention } from '../../services/pmBoard.js';
 
 export const pmRouter = Router();
-
-async function getLastSyncAt() {
-  const s = await prisma.syncRun.findFirst({
-    where: { status: { in: ['SUCCESS', 'PARTIAL'] } },
-    orderBy: { startedAt: 'desc' },
-  });
-  return s?.finishedAt ?? null;
-}
-
-/** โหลด project + tasks + metrics ต่อ project (ใช้ร่วมหลาย endpoint) */
-async function loadProjectMetrics(now, where = {}) {
-  const projects = await prisma.project.findMany({
-    where: { isActive: true, ...where },
-    orderBy: { sortOrder: 'asc' },
-  });
-  const out = [];
-  for (const p of projects) {
-    const tasks = await prisma.task.findMany({ where: { projectId: p.id, isDeleted: false } });
-    out.push({ project: p, metrics: computeProjectMetrics(p, tasks, now) });
-  }
-  return out;
-}
-
-function sameBkkMonth(date, now) {
-  if (!date) return false;
-  return todayDateStrBkk(date).slice(0, 7) === todayDateStrBkk(now).slice(0, 7);
-}
 
 /**
  * as-of mode — ดูข้อมูลย้อนหลัง ณ วันที่ อ่านจาก DailyAggregate (snapshot ล่าสุด ≤ asOf)
@@ -108,16 +83,7 @@ pmRouter.get('/portfolio', async (req, res, next) => {
         counts: m.counts,
         asOfNoData: !m.hasData,
       }));
-      const all = rows;
-      const kpis = {
-        total: all.length,
-        onTrack: all.filter((r) => r.metrics.status === PROJECT_STATUS.ON_TRACK).length,
-        atRisk: all.filter((r) => r.metrics.status === PROJECT_STATUS.AT_RISK).length,
-        delayed: all.filter((r) => r.metrics.status === PROJECT_STATUS.DELAYED).length,
-        waiting: all.filter((r) => r.metrics.status === PROJECT_STATUS.WAITING).length,
-        uatThisMonth: all.filter((r) => sameBkkMonth(r.project.targetUat, now)).length,
-        goliveThisMonth: all.filter((r) => sameBkkMonth(r.project.targetGolive, now)).length,
-      };
+      const kpis = computePortfolioKpis(rows, now);
       return res.json({
         asOf: asOf,
         asOfSnapshot: snapshotUsed,
@@ -127,52 +93,8 @@ pmRouter.get('/portfolio', async (req, res, next) => {
         projects,
       });
     }
-    // ── current mode ──
-    const where = {};
-    if (projectCode) where.projectCode = String(projectCode);
-    if (pm) where.pmUserId = Number(pm); // B7: ยังไม่มี pmUserId → คืนว่าง
-
-    let rows = await loadProjectMetrics(now, where);
-    if (status) rows = rows.filter((r) => r.metrics.status === String(status));
-
-    const projects = rows.map(({ project: p, metrics: m }) => ({
-      code: p.projectCode,
-      displayName: p.displayName,
-      pmUserId: p.pmUserId,
-      progressPct: m.progressPct,
-      progressSource: m.progressSource,
-      progressComputed: m.progressComputed,
-      status: m.status,
-      statusSource: m.statusSource,
-      statusAuto: m.statusAuto,
-      statusReasons: m.statusReasons,
-      startDate: p.startDate,
-      targetUat: p.targetUat,
-      actualUat: p.actualUat,
-      targetGolive: p.targetGolive,
-      actualGolive: p.actualGolive,
-      slipDays: m.slipDays,
-      hasTargetGolive: p.targetGolive != null,
-      counts: m.counts,
-    }));
-
-    // KPI 6 ใบ (§3) — นับจาก effective status
-    const all = await loadProjectMetrics(now); // ทุกโปรเจกต์สำหรับ KPI (ไม่กรอง)
-    const kpis = {
-      total: all.length,
-      onTrack: all.filter((r) => r.metrics.status === PROJECT_STATUS.ON_TRACK).length,
-      atRisk: all.filter((r) => r.metrics.status === PROJECT_STATUS.AT_RISK).length,
-      delayed: all.filter((r) => r.metrics.status === PROJECT_STATUS.DELAYED).length,
-      waiting: all.filter((r) => r.metrics.status === PROJECT_STATUS.WAITING).length,
-      uatThisMonth: all.filter((r) =>
-        sameBkkMonth(r.project.targetUat, now)
-      ).length,
-      goliveThisMonth: all.filter((r) =>
-        sameBkkMonth(r.project.targetGolive, now)
-      ).length,
-    };
-
-    res.json({ asOf: now.toISOString(), lastSyncAt: await getLastSyncAt(), kpis, projects });
+    // ── current mode ── (service กลาง — รายงานรายสัปดาห์เรียกตัวเดียวกัน)
+    res.json(await getPortfolio({ now, filters: { pm, status, projectCode } }));
   } catch (err) {
     next(err);
   }
@@ -181,24 +103,9 @@ pmRouter.get('/portfolio', async (req, res, next) => {
 // GET /api/pm/milestones?days=&limit=  — ไม่ส่ง days = แสดง milestone ที่จะถึงทั้งหมด (ไม่ตัด window)
 pmRouter.get('/milestones', async (req, res, next) => {
   try {
-    const now = new Date();
     const days = req.query.days ? Number(req.query.days) : null; // null = ไม่จำกัดช่วง
     const limit = Number(req.query.limit ?? 12);
-    const projects = await prisma.project.findMany({ where: { isActive: true } });
-    const items = [];
-    for (const p of projects) {
-      // milestone ที่ยังไม่เกิด = มี target แต่ยังไม่มี actual
-      const uat = p.actualUat ? null : p.targetUat;
-      const golive = p.actualGolive ? null : p.targetGolive;
-      for (const [type, date] of [['UAT', uat], ['GO_LIVE', golive]]) {
-        const d = daysUntil(date, now);
-        if (date && d != null && d >= 0 && (days == null || d <= days)) {
-          items.push({ code: p.projectCode, displayName: p.displayName, type, date, inDays: d });
-        }
-      }
-    }
-    items.sort((a, b) => a.inDays - b.inDays);
-    res.json({ asOf: now.toISOString(), days, items: items.slice(0, limit) });
+    res.json(await getMilestones({ now: new Date(), days, limit }));
   } catch (err) {
     next(err);
   }
@@ -247,12 +154,7 @@ pmRouter.get('/trend', async (req, res, next) => {
 pmRouter.get('/attention', async (req, res, next) => {
   try {
     const status = req.query.status ? String(req.query.status) : 'OPEN';
-    const items = await prisma.attentionItem.findMany({
-      where: { status },
-      orderBy: [{ neededBy: 'asc' }, { createdAt: 'desc' }],
-      include: { project: { select: { projectCode: true, displayName: true } } },
-    });
-    res.json({ asOf: new Date().toISOString(), items });
+    res.json(await getAttention({ status }));
   } catch (err) {
     next(err);
   }
