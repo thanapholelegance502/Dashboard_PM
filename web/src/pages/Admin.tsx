@@ -6,10 +6,11 @@ import {
   getBudget, createInstallment, patchInstallment, deleteInstallment,
   createSectionRule, patchSectionRule, deleteSectionRule, recompute,
   getUsers, createUser, patchUser, getSyncStatus, larkAuthorizeUrl,
+  getWeeklyReportStatus, testSendWeeklyReport, type WeeklyReportStatus,
 } from '../lib/api';
 import type { AdminProject, UnmappedSection, SectionRule, BudgetResult, AppUserRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
-import { money, fmtDate } from '../lib/format';
+import { money, fmtDate, fmtDateTime } from '../lib/format';
 import { STATUS_LABEL } from '../lib/theme';
 import Dialog, { ConfirmDialog, Toast } from '../components/Dialog';
 
@@ -30,7 +31,7 @@ const label = 'field-label';
 const formBox = 'card mb-5 p-5';
 
 export default function Admin() {
-  const [tab, setTab] = useState<'projects' | 'rules' | 'users'>('projects');
+  const [tab, setTab] = useState<'projects' | 'rules' | 'users' | 'report'>('projects');
   const isAdmin = useAuth().user?.role === 'ADMIN'; // จัดการผู้ใช้ = ADMIN เท่านั้น
   return (
     <AppShell title="ตั้งค่าระบบ" eyebrow="Settings · Projects · Section Rules · Users">
@@ -40,10 +41,12 @@ export default function Admin() {
           <TabBtn active={tab === 'projects'} onClick={() => setTab('projects')}>โครงการ · Milestone</TabBtn>
           <TabBtn active={tab === 'rules'} onClick={() => setTab('rules')}>Section Rules</TabBtn>
           {isAdmin && <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>ผู้ใช้</TabBtn>}
+          <TabBtn active={tab === 'report'} onClick={() => setTab('report')}>อีเมลสรุปรายสัปดาห์</TabBtn>
         </nav>
         {tab === 'projects' && <ProjectsTab />}
         {tab === 'rules' && <RulesTab />}
         {tab === 'users' && isAdmin && <UsersTab />}
+        {tab === 'report' && <WeeklyReportTab />}
       </div>
     </AppShell>
   );
@@ -596,6 +599,91 @@ function UsersTab() {
         </tbody>
       </table>
       </div>
+    </div>
+  );
+}
+
+// ── อีเมลสรุปรายสัปดาห์ (บอร์ด PM/KHAW) ──────────────────
+// ส่งถึงผู้รับจริงได้ทางเดียว = cron บน production · ปุ่มนี้ส่งถึง "คนกด" เท่านั้น (ด่านอยู่ฝั่ง server)
+function WeeklyReportTab() {
+  const { user } = useAuth();
+  const [st, setSt] = useState<WeeklyReportStatus | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => { setErr(null); getWeeklyReportStatus().then(setSt).catch((e) => setErr(e.message)); };
+  useEffect(load, []);
+
+  const testSend = async () => {
+    setBusy(true);
+    setErr(null);
+    setMsg('');
+    try {
+      await testSendWeeklyReport();
+      setMsg(`ส่งทดสอบแล้ว → ${user?.email ?? 'อีเมลของคุณ'} (เช็คกล่องจดหมาย + ไฟล์แนบ PDF)`);
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!st && !err) return <p className="text-sm text-ink-3">กำลังโหลด…</p>;
+  const row = 'flex items-baseline justify-between gap-3 border-b border-hair-2 py-2 text-sm last:border-b-0';
+
+  return (
+    <div className="flex max-w-2xl flex-col gap-4">
+      <Toast msg={msg} onClose={() => setMsg('')} />
+      {err && <div className="rounded-lg bg-late-bg p-3 text-sm text-late">{err}</div>}
+      {st && (
+        <div className="card p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${st.enabled ? 'bg-ok' : 'bg-line-strong'}`} />
+            <span className="font-semibold">{st.enabled ? 'เปิดส่งอัตโนมัติอยู่' : 'ยังไม่เปิดส่งอัตโนมัติ'}</span>
+          </div>
+          <div className={row}><span className="text-ink-2">รอบส่ง</span><span className="font-mono text-xs">{st.cron} (Asia/Bangkok)</span></div>
+          <div className={row}><span className="text-ink-2">SMTP</span><span>{st.smtpConfigured ? 'ตั้งค่าแล้ว' : 'ยังไม่ได้ตั้ง'}</span></div>
+          <div className={row}>
+            <span className="text-ink-2">ผู้รับ</span>
+            <span className="text-right">{st.recipients.length ? st.recipients.join(', ') : '—'}
+              {st.invalidRecipients > 0 && <span className="block text-xs text-late">อีเมลผิด/นอกโดเมน {st.invalidRecipients} รายการ</span>}
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-ink-3">ตั้งค่าใน server/.env.production บน server เท่านั้น (ดู docs/WEEKLY-REPORT.md)</p>
+        </div>
+      )}
+
+      <div className="card flex flex-wrap items-center gap-3 p-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">ส่งทดสอบ</div>
+          <div className="text-xs text-ink-3">ส่งถึง <b>{user?.email}</b> คนเดียว — ไม่ส่งถึงผู้รับจริง</div>
+        </div>
+        <button onClick={testSend} disabled={busy || !st?.smtpConfigured} className="btn-primary">
+          {busy ? 'กำลังส่ง…' : 'ส่งทดสอบถึงตัวผม'}
+        </button>
+      </div>
+
+      {st && (
+        <div className="card p-4">
+          <div className="mb-2 text-sm font-semibold">ประวัติการส่งล่าสุด</div>
+          {st.recent.length === 0 ? (
+            <p className="text-sm text-ink-3">ยังไม่เคยส่ง</p>
+          ) : (
+            st.recent.map((r) => (
+              <div key={r.id} className={row}>
+                <span>
+                  <span className={r.action === 'SEND' ? 'text-ok' : 'font-semibold text-late'}>{r.action === 'SEND' ? '✓ ส่งแล้ว' : '✗ ล้มเหลว'}</span>
+                  <span className="ml-2 text-xs text-ink-3">{r.entityId === 'TEST' ? 'ทดสอบ' : r.entityId === 'CLI' ? 'command line' : `รอบ ${r.entityId}`}</span>
+                  {r.action === 'SEND_FAILED' && r.after?.error ? <span className="block text-xs text-late">{String(r.after.error)}</span> : null}
+                </span>
+                <span className="shrink-0 text-xs text-ink-2">{fmtDateTime(r.createdAt)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

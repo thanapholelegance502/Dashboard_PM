@@ -3,8 +3,8 @@ import { prisma } from '../db/prisma.js';
 
 /**
  * @param {object} a { appUserId, entity, entityId, action, before?, after?, reason? }
- *   entity: Project | SectionRule | AttentionItem | Member | PaymentInstallment | AppUser
- *   action: CREATE | UPDATE | DELETE | OVERRIDE
+ *   entity: Project | SectionRule | AttentionItem | Member | PaymentInstallment | AppUser | WeeklyReport
+ *   action: CREATE | UPDATE | DELETE | OVERRIDE | SEND | SEND_FAILED (WeeklyReport — entityId = ISO week / TEST / CLI)
  */
 export async function writeAudit(a, tx = prisma) {
   return tx.auditLog.create({

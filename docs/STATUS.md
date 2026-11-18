@@ -23,6 +23,7 @@
 ### ส่วนเพิ่มตามที่ข้าวขอ
 - **CRUD Section Rules UI** + `recompute` (map section เอง → apply กับ task ทันที ไม่ยิง Lark) — แก้ปัญหา "เพิ่มบอร์ดแล้วข้อมูลมั่ว"
 - **Budget + งวดการเงิน** (Project.budget + PaymentInstallment) — Admin จัดการ + แสดงในหน้า detail
+- **ดาวน์โหลด PDF + อีเมลสรุปรายสัปดาห์** (บอร์ด KHAW) — ศุกร์ 17:30 แนบ PDF · ตัวเลขจาก service เดียวกับหน้า `/pm` · ⏳ รอตั้ง SMTP บน server → [WEEKLY-REPORT.md](WEEKLY-REPORT.md)
 - **Finance drill-down** — กดแถวโครงการ / งวดเลยกำหนด / แท่งกระแสเงินสด → drawer งวดการเงิน (อ่านอย่างเดียว · URL แชร์ได้)
 - **as-of date** — ดูข้อมูลย้อนหลังจาก snapshot
 - **stage filter** ในหน้า detail (dept/bucket/section)

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getPortfolio, getMilestones, getAttention, getTrend, runSyncNow } from '../lib/api';
+import { getPortfolio, getMilestones, getAttention, getTrend, runSyncNow, downloadPmReport } from '../lib/api';
 import type { Portfolio, Milestone, AttentionItem, TrendResponse, ProjectStatus } from '../lib/types';
 import { fmtDateTime, fmtDate, isStale } from '../lib/format';
 import { statusColor, STATUS_LABEL } from '../lib/theme';
@@ -70,7 +70,24 @@ export default function PM() {
       {syncing ? 'กำลัง Sync…' : 'Sync now'}
     </button>
   );
-  const printBtn = <button onClick={() => window.print()} className="btn-secondary no-print">พิมพ์</button>;
+  // PDF ตัวเดียวกับที่ส่งเมลทุกศุกร์ — ทั้ง portfolio ปัจจุบันเสมอ (ไม่สน filter)
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfErr, setPdfErr] = useState<string | null>(null);
+  const doPdf = async () => {
+    setPdfBusy(true);
+    setPdfErr(null);
+    try { await downloadPmReport(); } catch (e) { setPdfErr((e as Error).message); } finally { setPdfBusy(false); }
+  };
+  const printBtn = (
+    <button
+      onClick={doPdf}
+      disabled={pdfBusy || !!asOf}
+      title={asOf ? 'PDF ใช้ข้อมูลปัจจุบันเท่านั้น — ล้างวันที่ย้อนหลังก่อน' : 'ดาวน์โหลดสรุปเป็น PDF (ไฟล์เดียวกับที่ส่งเมลทุกศุกร์)'}
+      className="btn-secondary no-print"
+    >
+      {pdfBusy ? 'กำลังสร้าง PDF…' : 'ดาวน์โหลด PDF'}
+    </button>
+  );
 
   if (err && !portfolio) {
     return (
@@ -110,6 +127,7 @@ export default function PM() {
       tagline={TAGLINE}
       actions={<>{printBtn}{syncBtn}</>}
     >
+      {pdfErr && <div className="no-print mb-5 max-w-xl"><ErrorBox title={`สร้าง PDF ไม่ได้: ${pdfErr}`} onRetry={doPdf} /></div>}
       {/* toolbar */}
       <div className="card no-print mb-5 flex flex-wrap items-center justify-between gap-3 px-3.5 py-3">
         <FilterBar projects={portfolio.projects} filters={filters} onChange={setFilters} />

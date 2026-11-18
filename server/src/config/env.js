@@ -42,6 +42,22 @@ export const env = {
   yokCronMorning: process.env.YOK_CRON_MORNING ?? '0 9 * * *',
   yokCronEvening: process.env.YOK_CRON_EVENING ?? '0 17 * * *',
 
+  // รายงานรายสัปดาห์ (บอร์ด PM/KHAW) — ค่าทั้งหมดอยู่ใน .env.production บน server
+  // ‼️ repo public: ห้ามใส่อีเมล/รหัสจริงในโค้ด (docs/HANDOFF.md)
+  publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? '').replace(/\/+$/, ''),
+  smtpHost: process.env.SMTP_HOST ?? '',
+  smtpPort: Number(process.env.SMTP_PORT ?? 465),
+  smtpSecure: (process.env.SMTP_SECURE ?? 'true') === 'true',
+  smtpUser: process.env.SMTP_USER ?? '',
+  smtpPass: process.env.SMTP_PASS ?? '',
+  mailFrom: process.env.MAIL_FROM ?? '',
+  mailAllowedDomain: (process.env.MAIL_ALLOWED_DOMAIN ?? '').toLowerCase(),
+  weeklyReportEnabled: process.env.WEEKLY_REPORT_ENABLED === 'true', // kill switch — เปิดได้ stack เดียว
+  weeklyReportTo: process.env.WEEKLY_REPORT_TO ?? '',
+  weeklyReportCron: process.env.WEEKLY_REPORT_CRON ?? '30 17 * * 5', // ศุกร์ 17:30
+  chromiumPath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium',
+  pdfRenderTimeoutMs: Number(process.env.PDF_RENDER_TIMEOUT_MS ?? 30_000),
+
   // Sync schedule
   cronMorning: process.env.SYNC_CRON_MORNING ?? '0 8 * * *',
   cronEvening: process.env.SYNC_CRON_EVENING ?? '0 17 * * *',
@@ -65,4 +81,14 @@ export function isYokEnabled() {
   if (!env.yokSheetId) return false;
   if (env.yokSource === 'api') return Boolean(env.googleSaKeyFile || env.googleSaKeyB64);
   return true; // gviz ไม่ต้องมี credential — แลกกับชีตต้องเปิด public
+}
+
+/** ส่งเมลได้ไหม (มีค่า SMTP ครบ) */
+export function isSmtpConfigured() {
+  return Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.mailFrom);
+}
+
+/** ลง cron ส่งรายงานรายสัปดาห์ไหม — ขาดอะไร = ไม่ลง ไม่ crash (แบบ isYokEnabled) */
+export function isWeeklyReportEnabled() {
+  return Boolean(env.weeklyReportEnabled && isSmtpConfigured() && env.publicBaseUrl && env.weeklyReportTo && env.mailAllowedDomain);
 }
