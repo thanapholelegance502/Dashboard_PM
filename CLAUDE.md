@@ -7,7 +7,7 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 ดึงข้อมูลจริงจาก **Lark Task API** → ETL → PostgreSQL → REST API → React dashboard
 แทน prototype เดิมบน Genspark · ผู้สั่งงาน: ข้าว (PM, Elegance Consultant)
 
-## สถานะปัจจุบัน (28 ก.ย. 2026) — ละเอียดดู [docs/STATUS.md](docs/STATUS.md)
+## สถานะปัจจุบัน (18 พ.ย. 2026) — ละเอียดดู [docs/STATUS.md](docs/STATUS.md)
 - ✅ **P1 Data Layer** — Lark ETL · OAuth + refresh rotation · snapshot · cron
 - ✅ **PM Dashboard + Admin + Finance** — KPI/Gantt/drill-down · section rules · budget/งวดการเงิน · as-of
 - ✅ **POC ขึ้นจริง** `https://elegancedb.duckdns.org` — Vultr + DuckDNS + Caddy (HTTPS) → [docs/POC-DEPLOY.md](docs/POC-DEPLOY.md)
@@ -19,6 +19,8 @@ Dashboard บริหารโปรเจกต์หลายแผนก (PM
 - ✅ **บอร์ด QA** `/qa/` (repo Dashboard_Tester, branch `Main`) — เปิดบน server แล้ว + รายงาน Tester ตามช่วงวัน · ค้างฝั่ง tester ดู HANDOFF §4
 - ✅ **บอร์ด BA** `/ba/` (repo Dashboard_BA, branch `main`) — เปิดบน server แล้ว · DB `ba` แยก · Lark user OAuth → [docs/BA-ONBOARDING.md](docs/BA-ONBOARDING.md)
 - ✅ **บอร์ด YOK** `/yok` — Project Executive (ทีม PM อีกสาย) กวาด Google Sheet ฝั่ง server cron 09:00/17:00 เก็บลง Postgres · 🔴 โหมด gviz = ชีตยังต้องเปิด public · ปิดชีตได้เมื่อย้ายเป็น `YOK_SOURCE=api` → [docs/YOK-BOARD.md](docs/YOK-BOARD.md)
+- ✅ **เมนูใหม่** (กลุ่ม ผู้บริหาร/โครงการ/แผนก) · **ดาวน์โหลด PDF + เมลศุกร์ 17:30** บอร์ด KHAW (SMTP ยังไม่ตั้ง) → [docs/WEEKLY-REPORT.md](docs/WEEKLY-REPORT.md)
+- 🎯 **งานถัดไป: รายงานรายสัปดาห์ v2** (PDF ใหม่ · โน้ต 3 ช่อง · แยกงานเสร็จ · PDF ย้อนหลัง) → [docs/NEXT-WEEKLY-REPORT-V2.md](docs/NEXT-WEEKLY-REPORT-V2.md)
 - 📝 **TODO ข้าว** (ปิด SSH password ฯลฯ) → ท้ายตาราง P0 ใน [docs/STATUS.md](docs/STATUS.md)
 - server เก่า `203.150.48.37` เลิกใช้แล้ว
 
@@ -79,6 +81,7 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
 - `docs/BA-ONBOARDING.md` — **ส่งทีม BA**: เอาบอร์ด BA ขึ้น `/ba/` · DB `ba` แยก · flow PR/deploy · template CI
 - `docs/BA-LARK-AUTH.md` — **ส่งทีม BA**: เปลี่ยน Lark เป็น user OAuth + เลือกบอร์ดใน admin (แบบ PM)
+- `docs/NEXT-WEEKLY-REPORT-V2.md` — **🎯 งานถัดไป**: แผนรายงานรายสัปดาห์ v2
 - `docs/WEEKLY-REPORT.md` — **PDF + อีเมลสรุปรายสัปดาห์** (บอร์ด KHAW): ตั้ง SMTP · กันส่งพลาด · ส่งซ้ำ · แก้ปัญหา
 - `docs/YOK-BOARD.md` — **บอร์ด YOK**: ตั้ง Google service account · column mapping · ลำดับเปิดใช้ + ถอด public sharing
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)
