@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../lib/auth';
 import type { BoardInfo } from '../lib/types';
+import { groupBoards } from '../lib/boardGroups';
 
 /** หน้าแรกหลัง login — เลือกบอร์ดแผนกตามสิทธิ์ (server/src/domain/boards.js) */
 export default function Landing() {
@@ -23,10 +24,8 @@ export default function Landing() {
   const allowed = new Set(user?.boards ?? []);
   const mine = catalog.filter((b) => b.kind !== 'soon' && allowed.has(b.code));
   const soon = catalog.filter((b) => b.kind === 'soon');
-  // หัวกลุ่มเดียวกับ sidebar (server/src/domain/boards.js) · กลุ่มที่ไม่มีบอร์ดให้เห็นไม่โชว์
-  const grouped = (user?.boardGroups ?? [])
-    .map((g) => ({ ...g, boards: mine.filter((b) => b.group === g.key) }))
-    .filter((g) => g.boards.length > 0);
+  // หัวกลุ่มเดียวกับ sidebar · groups ว่าง (server เก่าช่วง deploy) → fallback หัว "บอร์ด" ไม่ปล่อยหน้าแรกว่าง
+  const grouped = groupBoards(user?.boardGroups ?? [], mine);
 
   return (
     <AppShell title="Elegance PMO" eyebrow="เลือกบอร์ดแผนก">

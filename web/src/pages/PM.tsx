@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getPortfolio, getMilestones, getAttention, getTrend, runSyncNow, downloadPmReport } from '../lib/api';
-import type { Portfolio, Milestone, AttentionItem, TrendResponse, ProjectStatus } from '../lib/types';
+import { getPortfolio, getMilestones, getAttention, getTrend, runSyncNow, downloadPmReport, listWeeklyReports, weeklyReportPdfUrl } from '../lib/api';
+import type { Portfolio, Milestone, AttentionItem, TrendResponse, ProjectStatus, WeeklyArchiveItem } from '../lib/types';
 import { fmtDateTime, fmtDate, isStale } from '../lib/format';
 import { statusColor, STATUS_LABEL } from '../lib/theme';
 import AppShell from '../components/AppShell';
@@ -12,6 +12,8 @@ import DonutChart from '../components/DonutChart';
 import TrendLine from '../components/TrendLine';
 import FilterBar, { type Filters } from '../components/FilterBar';
 import DrillDownPanel from '../components/DrillDownPanel';
+import StatusBadge from '../components/StatusBadge';
+import WeeklyNotesCard from '../components/WeeklyNotesCard';
 import { useAuth } from '../lib/auth';
 
 const TITLE = 'Project Portfolio — Executive Summary';
@@ -29,6 +31,8 @@ export default function PM() {
   const [drill, setDrill] = useState<{ code: string; title: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [archives, setArchives] = useState<WeeklyArchiveItem[]>([]);
+  const [showDone, setShowDone] = useState(false);
   const { user } = useAuth();
   // /finance ต้องมี board CLEVEL — ไม่มีก็อย่าเสนอลิงก์ที่กดแล้วเจอ 403
   const canSeeFinance = !!user?.boards?.includes('CLEVEL');
@@ -38,11 +42,13 @@ export default function PM() {
       .then((p) => { setPortfolio(p); setErr(null); })
       .catch((e) => setErr(e.message));
 
+  const loadArchives = () => listWeeklyReports().then((r) => setArchives(r.items)).catch(() => {});
   useEffect(() => { loadPortfolio(); }, [filters.status, filters.projectCode, asOf]);
   useEffect(() => {
     getMilestones().then((r) => setMilestones(r.items)).catch(() => {});
     getAttention('OPEN').then((r) => setAttention(r.items)).catch(() => {});
     getTrend(12).then(setTrend).catch(() => {});
+    loadArchives();
   }, []);
 
   const donutData = useMemo(() => {
@@ -117,6 +123,9 @@ export default function PM() {
   const stale = isStale(portfolio.lastSyncAt);
   const codes = portfolio.projects.slice(0, 5).map((p) => p.code);
   const openDrill = (code: string) => setDrill({ code, title: 'การ์ดทั้งหมด' });
+  // แยกงานเสร็จออกจาก timeline หลัก (projects มาเรียง sortByPain แล้ว · KPI/donut ยังนับ Done)
+  const activeProjects = portfolio.projects.filter((p) => p.status !== 'DONE');
+  const doneProjects = portfolio.projects.filter((p) => p.status === 'DONE');
 
   return (
     <AppShell
@@ -233,10 +242,63 @@ export default function PM() {
         </div>
       </div>
 
-      {/* Gantt */}
+      {/* Gantt — ไม่รวมงานเสร็จ (ดูในหัวข้อ "โครงการที่เสร็จแล้ว") */}
       <div className="mb-5">
         <SectionCard title="Project Timeline (Target vs Actual)" flush>
-          <GanttTimeline projects={portfolio.projects} onProjectClick={openDrill} />
+          {activeProjects.length === 0
+            ? <EmptyState text="ไม่มีโครงการที่กำลังดำเนินการ" tone="muted" />
+            : <GanttTimeline projects={activeProjects} onProjectClick={openDrill} />}
+        </SectionCard>
+      </div>
+
+      {/* โครงการที่เสร็จแล้ว — พับเก็บได้ */}
+      {doneProjects.length > 0 && (
+        <div className="mb-5">
+          <SectionCard
+            title={`โครงการที่เสร็จแล้ว (${doneProjects.length})`}
+            right={<button onClick={() => setShowDone((v) => !v)} className="btn-ghost btn-sm">{showDone ? 'ซ่อน' : 'แสดง'}</button>}
+            flush
+          >
+            {showDone && (
+              <ul>
+                {doneProjects.map((p) => (
+                  <li key={p.code} className="flex items-center justify-between gap-3 border-b border-hair-2 px-[18px] py-2.5 text-sm last:border-b-0 hover:bg-[#FAF9F6]">
+                    <button onClick={() => openDrill(p.code)} className="min-w-0 truncate text-left font-medium text-brand-700 hover:underline">{p.displayName}</button>
+                    <span className="flex shrink-0 items-center gap-3 text-xs text-ink-2">
+                      <span className="tabular-nums">Go-Live {fmtDate(p.actualGolive ?? p.targetGolive)}</span>
+                      <StatusBadge status={p.status} source={p.statusSource} reasons={p.statusReasons} autoStatus={p.statusAuto} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        </div>
+      )}
+
+      {/* บันทึกประจำสัปดาห์ (ลง PDF) + รายงานย้อนหลัง */}
+      <div className="mb-5">
+        <WeeklyNotesCard onClosed={loadArchives} />
+      </div>
+      <div className="mb-5">
+        <SectionCard title="รายงานย้อนหลัง" count={archives.length} flush>
+          {archives.length === 0
+            ? <EmptyState text="ยังไม่มีรายงานที่ปิดสัปดาห์" sub="กด “ปิดสัปดาห์ตอนนี้” หรือรอ cron ศุกร์ 17:30" tone="muted" />
+            : (
+              <ul>
+                {archives.map((a) => (
+                  <li key={a.weekKey} className="flex items-center justify-between gap-3 border-b border-hair-2 px-[18px] py-2.5 text-sm last:border-b-0 hover:bg-[#FAF9F6]">
+                    <span className="flex min-w-0 flex-col">
+                      <span className="font-medium">{a.weekKey}</span>
+                      <span className="text-xs text-ink-3">ปิดเมื่อ {fmtDateTime(a.generatedAt)}</span>
+                    </span>
+                    <a href={weeklyReportPdfUrl(a.weekKey)} target="_blank" rel="noreferrer" className="shrink-0 text-[13px] font-semibold text-brand-700 hover:underline">
+                      โหลด PDF →
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
         </SectionCard>
       </div>
 

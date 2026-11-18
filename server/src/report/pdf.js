@@ -31,6 +31,12 @@ function release() {
 
 /** html (เอกสารเต็ม) → Buffer PDF A4 */
 export async function renderPdf(html, { footerUrl = '' } = {}) {
+  // footer ว่าง = ไม่มี PUBLIC_BASE_URL → ไม่โชว์ลิงก์เสีย (เช่น "/pm") แค่ชื่อองค์กร
+  const safeUrl = String(footerUrl).replace(/[<>"&]/g, '');
+  if (!safeUrl) console.warn('[weekly-report] PUBLIC_BASE_URL ว่าง — PDF ไม่แสดงลิงก์กลับ dashboard');
+  const footerLeft = safeUrl
+    ? `Elegance PMO · ตรวจสอบตัวเลขได้ที่ ${safeUrl}`
+    : 'Elegance PMO · On Time · On Quality · On Business Value';
   await acquire();
   let browser;
   const timeoutMs = env.pdfRenderTimeoutMs;
@@ -67,8 +73,8 @@ export async function renderPdf(html, { footerUrl = '' } = {}) {
       headerTemplate: '<span></span>',
       footerTemplate:
         // footer ไม่เห็นฟอนต์ที่ฝังในหน้า → ใช้ฟอนต์ไทยของเครื่อง (server: fonts-thai-tlwg = Loma/Sarabun)
-        '<div style="font-family:Sarabun,Loma,Thonburi,sans-serif;font-size:7px;color:#7A7F88;width:100%;padding:0 12mm;display:flex;justify-content:space-between">'
-        + `<span>Elegance PMO · ตรวจสอบตัวเลขได้ที่ ${footerUrl.replace(/[<>"&]/g, '')}</span>`
+        '<div style="font-family:Sarabun,Loma,Thonburi,sans-serif;font-size:8.5px;color:#4A4E57;width:100%;padding:0 12mm;display:flex;justify-content:space-between">'
+        + `<span>${footerLeft}</span>`
         + '<span>หน้า <span class="pageNumber"></span>/<span class="totalPages"></span></span></div>',
     });
     return Buffer.from(out);

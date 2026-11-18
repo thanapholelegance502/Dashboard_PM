@@ -7,6 +7,7 @@ import {
   computePortfolioKpis,
   computeUpcomingMilestones,
   computeStatusBreakdown,
+  sortByPain,
 } from '../domain/portfolio.js';
 
 export async function getLastSyncAt() {
@@ -49,7 +50,9 @@ export async function getPortfolio({ now = new Date(), filters = {} } = {}) {
 
   let rows = await loadProjectMetrics(now, where);
   if (status) rows = rows.filter((r) => r.metrics.status === String(status));
-  const projects = rows.map(({ project, metrics }) => toProjectRow(project, metrics));
+  // เรียงตามความเดือดร้อน (Delayed → At Risk → On Track → Waiting → Done) · Done ยังอยู่ในชุด
+  // เพื่อให้ KPI/donut นับครบ · หน้า/PDF เป็นคนแยก Done ไปโชว์ section "เสร็จแล้ว" เอง
+  const projects = sortByPain(rows.map(({ project, metrics }) => toProjectRow(project, metrics)));
 
   const all = await loadProjectMetrics(now); // ทุกโปรเจกต์สำหรับ KPI (ไม่กรอง)
   const kpis = computePortfolioKpis(all, now);

@@ -29,9 +29,12 @@ export function classifyFreshness(sync, now, { expectSince = null } = {}) {
 }
 
 /** สร้าง model ที่ HTML/อีเมลใช้ร่วมกัน */
-export function buildReportModel(summary, { baseUrl, now = new Date(), expectSince = null } = {}) {
+export function buildReportModel(summary, { baseUrl, now = new Date(), expectSince = null, note = null } = {}) {
   const base = String(baseUrl ?? '').replace(/\/+$/, '');
   const p = summary.portfolio;
+  // แยก Done ออกจากตารางหลัก (projects มาเรียง sortByPain แล้ว → Done อยู่ท้าย)
+  const active = p.projects.filter((r) => r.status !== 'DONE');
+  const done = p.projects.filter((r) => r.status === 'DONE');
   return {
     title: 'Project Executive (KHAW)',
     weekRange: workWeekRange(now),
@@ -39,7 +42,14 @@ export function buildReportModel(summary, { baseUrl, now = new Date(), expectSin
     dataAt: summary.sync?.lastSuccess?.finishedAt ?? p.lastSyncAt ?? null,
     freshness: classifyFreshness(summary.sync, now, { expectSince }),
     kpis: p.kpis,
-    projects: p.projects,
+    projects: p.projects, // ครบ (เผื่อใช้ที่อื่น)
+    activeProjects: active,
+    doneProjects: done,
+    note: {
+      summary: note?.summary ?? '',
+      issues: note?.issues ?? '',
+      outOfScope: note?.outOfScope ?? '',
+    },
     statusBreakdown: summary.statusBreakdown,
     attention: summary.attention.items,
     milestones: summary.milestones.items,
@@ -48,6 +58,20 @@ export function buildReportModel(summary, { baseUrl, now = new Date(), expectSin
       project: (code) => `${base}/pm?drill=${encodeURIComponent(code)}`,
     },
   };
+}
+
+/** โน้ต 3 ช่อง (PM พิมพ์) → หน้า 1 · ว่าง = "—" (ไม่ซ่อนหัวข้อ) · ขึ้นบรรทัดใหม่ได้ · escape เสมอ */
+function noteSection(m) {
+  const block = (label, text) => {
+    const t = String(text ?? '').trim();
+    const body = t ? raw(esc(t).replace(/\n/g, '<br>')) : html`<span class="muted">—</span>`;
+    return html`<div class="note-b"><div class="note-l">${label}</div><div class="note-t">${body}</div></div>`;
+  };
+  return html`<div class="notes">
+    ${block('สรุปภาพรวม', m.note.summary)}
+    ${block('ปัญหาและอุปสรรค', m.note.issues)}
+    ${block('งานนอก scope ที่ทำเพิ่มเติม', m.note.outOfScope)}
+  </div>`;
 }
 
 const KPI_DEFS = [
@@ -100,12 +124,12 @@ function legend(m) {
   );
 }
 
-function projectTable(m) {
-  if (!m.projects.length) return html`<p class="empty">ยังไม่มีโครงการ</p>`;
+function projectTable(rows, m, { empty = 'ยังไม่มีโครงการ' } = {}) {
+  if (!rows.length) return html`<p class="empty">${empty}</p>`;
   return html`<table class="tbl proj"><thead><tr>
       <th>โครงการ</th><th>สถานะ</th><th class="r">คืบหน้า</th>
       <th class="r">Target UAT</th><th class="r">Target Go-Live</th><th class="r">ช้า</th>
-    </tr></thead><tbody>${m.projects.map((p) => {
+    </tr></thead><tbody>${rows.map((p) => {
       const pct = p.progressPct == null ? null : Math.max(0, Math.min(100, Math.round(p.progressPct)));
       return html`<tr>
         <td><a class="code" href="${m.links.project(p.code)}">${p.code}</a><div class="sub">${p.displayName}</div>
@@ -158,8 +182,14 @@ h2 { font-size: 11.5pt; margin: 14px 0 6px; }
 .bar i { display: block; height: 100%; background: #22406B; }
 .empty { color: #7A7F88; font-size: 9pt; margin: 4px 0; }
 .note { font-size: 7.5pt; color: #7A7F88; margin-top: 6px; }
-.proj-h { break-before: page; }
 .live { font-size: 8pt; font-weight: 400; margin-left: 6px; }
+h2.first { margin-top: 12px; }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 2px 0 4px; }
+.note-b { border: 1px solid #E2DFD8; border-left: 3px solid #22406B; border-radius: 6px; padding: 7px 9px; break-inside: avoid; }
+.note-l { font-size: 8pt; font-weight: 600; color: #22406B; margin-bottom: 3px; }
+.note-t { font-size: 9pt; line-height: 1.4; white-space: normal; }
+.muted { color: #9CA0A8; }
+.done-h { margin-top: 16px; color: #4A4E57; }
 `;
 
 /** HTML ฉบับ A4 สำหรับ Chromium → PDF · fontCss = @font-face ที่ฝังฟอนต์ (ว่างได้ตอนเทส) */
@@ -175,14 +205,17 @@ export function renderReportHtml(m, { fontCss = '' } = {}) {
   <div class="meta">ข้อมูล ณ ${fmtDateTime(m.dataAt)}<br>สร้างรายงาน ${fmtDateTime(m.generatedAt)}<br><a href="${m.links.board}">เปิดแดชบอร์ดสด →</a></div>
 </div>
 ${banner}
+<h2 class="first">สรุปจากผู้จัดการโครงการ</h2>
+${noteSection(m)}
 <div class="kpis">${kpiTiles(m)}</div>
 <div class="row">
   <div><h2>CEO Attention Required <a class="live" href="${m.links.board}">ดูสด →</a></h2>${attentionList(m)}</div>
   <div><h2>Projects by Status</h2><div class="donut">${raw(donutSvg(m.statusBreakdown))}<div>${legend(m)}</div></div>
     <h2>Milestones ที่จะถึง</h2>${milestoneList(m)}</div>
 </div>
-<h2 class="proj-h">โครงการทั้งหมด <a class="live" href="${m.links.board}">ดูสด →</a></h2>
-${projectTable(m)}
+<h2>โครงการ (เรียงตามความเดือดร้อน) <a class="live" href="${m.links.board}">ดูสด →</a></h2>
+${projectTable(m.activeProjects, m, { empty: 'ไม่มีโครงการที่กำลังดำเนินการ' })}
+${m.doneProjects.length ? html`<h2 class="done-h">โครงการที่เสร็จแล้ว (${m.doneProjects.length})</h2>${projectTable(m.doneProjects, m)}` : ''}
 </body></html>`;
   return body.value;
 }

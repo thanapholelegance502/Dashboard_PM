@@ -88,7 +88,15 @@ export function isSmtpConfigured() {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.mailFrom);
 }
 
-/** ลง cron ส่งรายงานรายสัปดาห์ไหม — ขาดอะไร = ไม่ลง ไม่ crash (แบบ isYokEnabled) */
+/** ลง cron "ส่งเมล" รายงานรายสัปดาห์ไหม — ขาดอะไร = ไม่ส่ง ไม่ crash (แบบ isYokEnabled) */
 export function isWeeklyReportEnabled() {
   return Boolean(env.weeklyReportEnabled && isSmtpConfigured() && env.publicBaseUrl && env.weeklyReportTo && env.mailAllowedDomain);
+}
+
+/**
+ * ลง cron "ปิดสัปดาห์" (เก็บ PDF archive) ไหม — production = ลงเสมอ แม้ยังไม่ตั้ง SMTP
+ * ‼️ ประวัติ PDF ต้องไม่ผูกกับการส่งเมล · บน server มี Chromium ใน image อยู่แล้ว
+ */
+export function isWeeklyArchiveEnabled() {
+  return env.nodeEnv === 'production';
 }

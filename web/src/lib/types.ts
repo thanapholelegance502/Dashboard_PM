@@ -210,6 +210,25 @@ export interface AppUserRow {
   boards: string[]; // บอร์ดที่ติ๊กให้ (ADMIN เห็นทุกบอร์ดโดยไม่ดูค่านี้)
 }
 
+// ── โน้ตรายสัปดาห์ + รายงานย้อนหลัง (บอร์ด KHAW) ─────────
+export interface WeeklyNoteData {
+  summary: string; // สรุปภาพรวม
+  issues: string; // ปัญหาและอุปสรรค
+  outOfScope: string; // งานนอก scope ที่ทำเพิ่มเติม
+}
+export interface WeeklyNoteState {
+  weekKey: string;
+  weekRange: string; // "16–20 พ.ย. 69"
+  note: WeeklyNoteData;
+  updatedAt: string | null;
+  closed: boolean; // ปิดสัปดาห์แล้ว → แก้ไม่ได้
+}
+export interface WeeklyArchiveItem {
+  weekKey: string;
+  dataAsOf: string | null;
+  generatedAt: string;
+}
+
 // ทะเบียนบอร์ดแผนก — มาจาก server/src/domain/boards.js ผ่าน /api/auth/me
 export type BoardGroupKey = 'exec' | 'project' | 'dept';
 export interface BoardGroup { key: BoardGroupKey; label: string }
