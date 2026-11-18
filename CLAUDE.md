@@ -79,5 +79,6 @@ cd server && npm run test:ci   # unit tests (npm test = รวม integration �
 - `docs/BOARD-INTEGRATION.md` — **portal หลายแผนก**: สัญญาเชื่อมบอร์ดแผนก (QA ที่ `/qa/`) + flow PR/รีวิว + template CI + checklist repo Dashboard_Tester
 - `docs/BA-ONBOARDING.md` — **ส่งทีม BA**: เอาบอร์ด BA ขึ้น `/ba/` · DB `ba` แยก · flow PR/deploy · template CI
 - `docs/BA-LARK-AUTH.md` — **ส่งทีม BA**: เปลี่ยน Lark เป็น user OAuth + เลือกบอร์ดใน admin (แบบ PM)
+- `docs/WEEKLY-REPORT.md` — **PDF + อีเมลสรุปรายสัปดาห์** (บอร์ด KHAW): ตั้ง SMTP · กันส่งพลาด · ส่งซ้ำ · แก้ปัญหา
 - `docs/YOK-BOARD.md` — **บอร์ด YOK**: ตั้ง Google service account · column mapping · ลำดับเปิดใช้ + ถอด public sharing
 - `docs/NEXT-SSO.md` — แผน Lark SSO + HTTPS (ทำเสร็จแล้ว — เก็บไว้อ้างอิง)

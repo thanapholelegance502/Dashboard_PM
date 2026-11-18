@@ -11,6 +11,9 @@ import { normalizeNewUser, assertUserChangeAllowed } from '../../domain/users.js
 import { normalizeBoards } from '../../domain/boards.js';
 import { newEtlState } from '../../domain/oauthState.js';
 import { buildAuthorizeUrl } from '../../lark/auth.js';
+import { env, isSmtpConfigured, isWeeklyReportEnabled } from '../../config/env.js';
+import { sendWeeklyReport, recentSends } from '../../report/sendWeekly.js';
+import { parseRecipients, maskEmail } from '../../mail/recipients.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireRole('ADMIN', 'PM')); // ทุก endpoint ต้อง ADMIN|PM
@@ -422,4 +425,35 @@ adminRouter.get('/lark/authorize', adminOnly, (req, res) => {
   const state = newEtlState();
   req.session.larkEtlState = state;
   res.redirect(buildAuthorizeUrl(state));
+});
+
+// ── รายงานรายสัปดาห์ (บอร์ด PM/KHAW) ─────────────────────
+// สถานะสำหรับการ์ดในหน้าตั้งค่า — ปิดบังอีเมลผู้รับ
+adminRouter.get('/weekly-report/status', async (_req, res, next) => {
+  try {
+    const { list, invalid } = parseRecipients(env.weeklyReportTo, { allowedDomain: env.mailAllowedDomain });
+    res.json({
+      enabled: isWeeklyReportEnabled(),
+      smtpConfigured: isSmtpConfigured(),
+      cron: env.weeklyReportCron,
+      recipients: list.map(maskEmail),
+      invalidRecipients: invalid.length,
+      recent: await recentSends(5),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const lastTestAt = new Map(); // appUserId → ms · กันกดรัว
+// ส่งทดสอบ — ถึงอีเมลของคนที่กดเท่านั้น (ด่านอยู่ใน resolveRecipients)
+adminRouter.post('/weekly-report/test-send', async (req, res, next) => {
+  try {
+    const last = lastTestAt.get(req.user.id) ?? 0;
+    if (Date.now() - last < 60_000) return res.status(429).json({ error: 'ส่งทดสอบได้นาทีละครั้ง' });
+    lastTestAt.set(req.user.id, Date.now());
+    res.json(await sendWeeklyReport({ kind: 'TEST', actor: req.user }));
+  } catch (err) {
+    next(err);
+  }
 });

@@ -8,6 +8,7 @@ import { computeFinance } from '../../domain/finance.js';
 import { isOverdue } from '../../domain/time.js';
 import { computePortfolioKpis } from '../../domain/portfolio.js';
 import { getLastSyncAt, getPortfolio, getMilestones, getAttention } from '../../services/pmBoard.js';
+import { generateWeeklyReport } from '../../report/sendWeekly.js';
 
 export const pmRouter = Router();
 
@@ -95,6 +96,19 @@ pmRouter.get('/portfolio', async (req, res, next) => {
     }
     // ── current mode ── (service กลาง — รายงานรายสัปดาห์เรียกตัวเดียวกัน)
     res.json(await getPortfolio({ now, filters: { pm, status, projectCode } }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/pm/report.pdf — ไฟล์เดียวกับที่ส่งทางเมลทุกศุกร์ (ทั้ง portfolio เสมอ ไม่สน filter บนจอ)
+pmRouter.get('/report.pdf', async (_req, res, next) => {
+  try {
+    const { pdf, filename } = await generateWeeklyReport({ now: new Date() });
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.set('Cache-Control', 'no-store');
+    res.send(pdf);
   } catch (err) {
     next(err);
   }

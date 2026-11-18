@@ -41,6 +41,36 @@ export const getDrilldown = (code: string, f: { dept?: string; bucket?: string; 
 export const getYokDashboard = () => req<YokDashboard>(`/yok/dashboard`);
 export const refreshYok = () => req<{ ok: boolean; error?: string }>(`/yok/refresh`, { method: 'POST' });
 
+// ── รายงานรายสัปดาห์ (บอร์ด PM/KHAW) ──────────────────
+/** ดาวน์โหลด PDF — fetch เป็น blob เพื่อแสดง error เป็นข้อความ ไม่ใช่เซฟไฟล์เสีย */
+export async function downloadPmReport(): Promise<void> {
+  const res = await fetch('/api/pm/report.pdf');
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { msg = (await res.json()).error ?? msg; } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const name = /filename="([^"]+)"/.exec(cd)?.[1] ?? 'PMO-KHAW.pdf';
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+export interface WeeklyReportStatus {
+  enabled: boolean;
+  smtpConfigured: boolean;
+  cron: string;
+  recipients: string[]; // ปิดบังแล้ว เช่น s***@company
+  invalidRecipients: number;
+  recent: Array<{ id: number; entityId: string; action: 'SEND' | 'SEND_FAILED'; after: Record<string, unknown> | null; createdAt: string }>;
+}
+export const getWeeklyReportStatus = () => req<WeeklyReportStatus>(`/admin/weekly-report/status`);
+export const testSendWeeklyReport = () =>
+  req<{ sent?: boolean; recipientCount?: number }>(`/admin/weekly-report/test-send`, { method: 'POST' });
+
 // ── Auth ────────────────────────────────────────────
 export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[] }
 export const getMe = () => req<Me>(`/auth/me`);
