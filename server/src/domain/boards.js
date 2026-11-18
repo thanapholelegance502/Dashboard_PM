@@ -1,14 +1,21 @@
 // ทะเบียนบอร์ดแผนก + สิทธิ์รายคน (portal หลายแผนก) · pure function ไม่แตะ DB เพื่อ test ได้
 // internal = หน้าใน SPA นี้ · external = แอปของทีมแผนกที่ nginx วางไว้ใต้ path (ดู docs/BOARD-INTEGRATION.md)
+// group = หัวกลุ่มในเมนู + หน้าแรก (เรียงตามลำดับในอาร์เรย์นี้ — ที่มาเดียวของทั้ง sidebar และการ์ด)
+export const BOARD_GROUPS = Object.freeze([
+  { key: 'exec', label: 'ผู้บริหาร' },
+  { key: 'project', label: 'โครงการ' },
+  { key: 'dept', label: 'แผนก' },
+]);
+
 export const BOARDS = [
-  { code: 'PM', name: 'PM · Portfolio', desc: 'Gantt · สถานะโครงการ · milestone', path: '/pm', kind: 'internal' },
-  { code: 'QA', name: 'QA · Tester', desc: 'บั๊ก · defect · คุณภาพงานเทส', path: '/qa/', kind: 'external' },
   // repo Dashboard_C_level ยังว่าง → ชี้หน้าการเงินในระบบนี้ไปก่อน พอมีแอปค่อยย้ายไป /clevel แบบ QA
-  { code: 'CLEVEL', name: 'C-level · การเงิน', desc: 'งบ · งวดเก็บเงิน · cash-flow', path: '/finance', kind: 'internal' },
-  { code: 'BA', name: 'BA · Requirement', desc: 'requirement · change · customer support', path: '/ba/', kind: 'external' }, // repo Dashboard_BA
+  { code: 'CLEVEL', group: 'exec', name: 'การเงิน', desc: 'งบ · งวดเก็บเงิน · cash-flow', path: '/finance', kind: 'internal' },
+  { code: 'PM', group: 'project', name: 'Project Executive (KHAW)', desc: 'Gantt · สถานะโครงการ · milestone', path: '/pm', kind: 'internal' },
   // อ่าน Google Sheet ของทีม PM อีกสาย ฝั่ง server (ดู docs/YOK-BOARD.md)
-  { code: 'YOK', name: 'PM · Project Executive', desc: 'stage · weekly update · billing · MA', path: '/yok', kind: 'internal' },
-  { code: 'UX', name: 'UX/UI', desc: 'design · usability', kind: 'soon' },
+  { code: 'YOK', group: 'project', name: 'Project Executive (YOK)', desc: 'stage · weekly update · billing · MA', path: '/yok', kind: 'internal' },
+  { code: 'QA', group: 'dept', name: 'QA · Tester', desc: 'บั๊ก · defect · คุณภาพงานเทส', path: '/qa/', kind: 'external' },
+  { code: 'BA', group: 'dept', name: 'BA · Requirement', desc: 'requirement · change · customer support', path: '/ba/', kind: 'external' }, // repo Dashboard_BA
+  { code: 'UX', group: 'dept', name: 'UX/UI', desc: 'design · usability', kind: 'soon' },
 ];
 
 /** บอร์ดที่เปิดใช้งานได้ (ให้สิทธิ์ได้) — ไม่รวมบอร์ด "เร็ว ๆ นี้" */

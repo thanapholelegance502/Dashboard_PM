@@ -23,6 +23,10 @@ export default function Landing() {
   const allowed = new Set(user?.boards ?? []);
   const mine = catalog.filter((b) => b.kind !== 'soon' && allowed.has(b.code));
   const soon = catalog.filter((b) => b.kind === 'soon');
+  // หัวกลุ่มเดียวกับ sidebar (server/src/domain/boards.js) · กลุ่มที่ไม่มีบอร์ดให้เห็นไม่โชว์
+  const grouped = (user?.boardGroups ?? [])
+    .map((g) => ({ ...g, boards: mine.filter((b) => b.group === g.key) }))
+    .filter((g) => g.boards.length > 0);
 
   return (
     <AppShell title="Elegance PMO" eyebrow="เลือกบอร์ดแผนก">
@@ -43,8 +47,15 @@ export default function Landing() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mine.map((b) => <BoardCard key={b.code} board={b} />)}
+          <div className="flex flex-col gap-7">
+            {grouped.map((g) => (
+              <section key={g.key}>
+                <h2 className="mb-3 text-xs font-medium tracking-wider text-ink-3">{g.label}</h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {g.boards.map((b) => <BoardCard key={b.code} board={b} />)}
+                </div>
+              </section>
+            ))}
           </div>
         )}
 

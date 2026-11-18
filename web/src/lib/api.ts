@@ -1,6 +1,6 @@
 import type {
   Portfolio, Milestone, TrendResponse, AttentionItem, DrilldownResult,
-  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo, YokDashboard,
+  AdminProject, UnmappedSection, SectionRule, BudgetResult, Installment, FinanceResult, AppUserRow, BoardInfo, BoardGroup, YokDashboard,
 } from './types';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -42,7 +42,7 @@ export const getYokDashboard = () => req<YokDashboard>(`/yok/dashboard`);
 export const refreshYok = () => req<{ ok: boolean; error?: string }>(`/yok/refresh`, { method: 'POST' });
 
 // ── Auth ────────────────────────────────────────────
-export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[] }
+export interface Me { id: number; email: string; displayName: string; role: string; boards: string[]; boardCatalog: BoardInfo[]; boardGroups: BoardGroup[] }
 export const getMe = () => req<Me>(`/auth/me`);
 export const logout = () => req<{ ok: boolean }>(`/auth/logout`, { method: 'POST' });
 export const loginUrl = '/api/auth/login';
