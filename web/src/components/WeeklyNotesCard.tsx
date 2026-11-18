@@ -65,7 +65,7 @@ export default function WeeklyNotesCard({ onClosed }: { onClosed?: () => void })
     setSaveErr(null);
     try {
       const s = await saveWeeklyNote(state.weekKey, draft);
-      setState(s); setDraft(s.note); setDirty(false);
+      setState((prev) => ({ ...prev!, ...s })); setDraft(s.note); setDirty(false);
     } catch (e) {
       setSaveErr((e as Error).message);
     } finally {

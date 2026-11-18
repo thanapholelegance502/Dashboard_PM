@@ -66,7 +66,8 @@ export async function saveWeekNote({ weekKey, data, actor = null }) {
     before: before ? pickNote(before) : undefined,
     after: clean,
   });
-  return { weekKey, note: pickNote(saved), updatedAt: saved.updatedAt, closed: false };
+  // weekRange ให้ตรง contract WeeklyNoteState (mutation = สัปดาห์ปัจจุบัน → ใช้ now)
+  return { weekKey, weekRange: workWeekRange(new Date()), note: pickNote(saved), updatedAt: saved.updatedAt, closed: false };
 }
 
 /**
